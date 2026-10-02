@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "react-hot-toast";
 import CookieNotification from "@/components/CookieNotification";
 import StoreProvider from "@/lib/store/StoreProvider";
 
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Footer />
           </main>
         </StoreProvider>
+        <Toaster position="top-center" />
       </body>
     </html>
   );
