@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { IoClose } from 'react-icons/io5';
 import toast from 'react-hot-toast';
-import { useCreateLeadMutation } from '@/lib/api/ordersApi';
+import { useCreateLeadMutation } from '@/lib/api/contentApi';
 
 interface OneClickOrderModalProps {
   isOpen: boolean;

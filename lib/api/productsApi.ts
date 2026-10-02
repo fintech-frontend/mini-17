@@ -14,7 +14,7 @@ export const productsApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     // GET /catalog/products/?category_slug=&search=&page=...
     getProducts: build.query<Paginated<ProductType>, ProductsQueryParams | void>({
-      query: (params) => ({ url: "catalog/products/", params: params ?? undefined }),
+      query: (params) => ({ url: "/catalog/products", params: params ?? undefined }),
       transformResponse: (res: Paginated<ApiProduct>) => ({
         ...res,
         results: res.results.map(mapProduct),
@@ -23,22 +23,22 @@ export const productsApi = baseApi.injectEndpoints({
     }),
     // GET /catalog/products/{id}/  (slug ham qabul qiladi)
     getProduct: build.query<ProductType, number | string>({
-      query: (idOrSlug) => `catalog/products/${idOrSlug}/`,
+      query: (idOrSlug) => `/catalog/products/${idOrSlug}`,
       transformResponse: (res: ApiProductDetail) => mapProductDetail(res),
       providesTags: (_r, _e, id) => [{ type: "Products", id }],
     }),
     // GET /catalog/products/{slug}/related/
     getRelatedProducts: build.query<ProductType[], string>({
-      query: (slug) => `catalog/products/${slug}/related/`,
+      query: (slug) => `/catalog/products/${slug}/related`,
       transformResponse: (res: ApiProduct[]) => res.map(mapProduct),
     }),
     // GET /catalog/products/{id}/rating/
     getProductRating: build.query<ApiRatingSummary, number>({
-      query: (id) => `catalog/products/${id}/rating/`,
+      query: (id) => `/catalog/products/${id}/rating`,
     }),
     // GET /catalog/products/{id}/reviews/
     getProductReviews: build.query<Paginated<ApiProductReview>, { id: number; page?: number }>({
-      query: ({ id, page }) => ({ url: `catalog/products/${id}/reviews/`, params: { page } }),
+      query: ({ id, page }) => ({ url: `/catalog/products/${id}/reviews`, params: { page } }),
     }),
   }),
 });

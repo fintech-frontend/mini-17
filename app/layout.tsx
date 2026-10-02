@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
-import StoreProvider from "@/components/providers/StoreProvider";
+import CookieNotification from "@/components/CookieNotification";
+import StoreProvider from "@/lib/store/StoreProvider";
+
 import "./globals.css";
+
+import Header from "@/components/layout/navbar";
+import Footer from "@/components/layout/footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,7 +31,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <StoreProvider>{children}</StoreProvider>
+        <StoreProvider>
+          <Header />
+          <main className="flex-1">
+            {children}
+            <CookieNotification />
+            <Footer />
+          </main>
+        </StoreProvider>
         <Toaster position="top-center" />
       </body>
     </html>

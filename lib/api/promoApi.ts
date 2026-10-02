@@ -3,7 +3,6 @@ import { mapProduct } from "./mappers";
 import type {
   ApiArticle,
   ApiArticleDetail,
-  ApiBanner,
   ApiHome,
   ApiProduct,
   ApiPromotion,
@@ -27,7 +26,7 @@ export const promoApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     // GET /home/ — bosh sahifa uchun hammasi bitta so'rovda
     getHome: build.query<HomeData, void>({
-      query: () => "home/",
+      query: () => "/home",
       transformResponse: (res: ApiHome) => ({
         ...res,
         popular_products: mapList(res.popular_products),
@@ -38,30 +37,25 @@ export const promoApi = baseApi.injectEndpoints({
       }),
       providesTags: ["Home"],
     }),
-    // GET /banners/
-    getBanners: build.query<ApiBanner[], void>({
-      query: () => "banners/",
-      providesTags: ["Banners"],
-    }),
     // GET /promotions/
     getPromotions: build.query<ApiPromotion[], void>({
-      query: () => ({ url: "promotions/", params: { page_size: 50 } }),
+      query: () => ({ url: "/promotions", params: { page_size: 50 } }),
       transformResponse: (res: Paginated<ApiPromotion>) => res.results,
       providesTags: ["Promotions"],
     }),
     // GET /promotions/{slug}/
     getPromotion: build.query<ApiPromotionDetail, string>({
-      query: (slug) => `promotions/${slug}/`,
+      query: (slug) => `/promotions/${slug}`,
       providesTags: (_r, _e, slug) => [{ type: "Promotions", id: slug }],
     }),
     // GET /news/
     getNews: build.query<Paginated<ApiArticle>, { page?: number; page_size?: number } | void>({
-      query: (params) => ({ url: "news/", params: params ?? undefined }),
+      query: (params) => ({ url: "/news", params: params ?? undefined }),
       providesTags: ["News"],
     }),
     // GET /news/{slug}/
     getNewsItem: build.query<ApiArticleDetail, string>({
-      query: (slug) => `news/${slug}/`,
+      query: (slug) => `/news/${slug}`,
       providesTags: (_r, _e, slug) => [{ type: "News", id: slug }],
     }),
   }),
@@ -69,7 +63,6 @@ export const promoApi = baseApi.injectEndpoints({
 
 export const {
   useGetHomeQuery,
-  useGetBannersQuery,
   useGetPromotionsQuery,
   useGetPromotionQuery,
   useGetNewsQuery,
