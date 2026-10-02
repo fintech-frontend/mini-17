@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useGetProductQuery, useGetRelatedProductsQuery } from '@/lib/api/productsApi';
 import toast from 'react-hot-toast';
+import { useAddToCart } from '@/lib/useAddToCart';
 
 import ProductGallery from '@/components/ProductGallery';
 import ProductSidebar from '@/components/Productsibebar';
@@ -26,6 +27,7 @@ export default function ProductDetailPage() {
   });
 
   const [quantity, setQuantity] = useState(1);
+  const { add: addToCart } = useAddToCart();
   const [isOneClickOpen, setIsOneClickOpen] = useState(false);
 
   if (isLoading) {
@@ -47,22 +49,8 @@ export default function ProductDetailPage() {
 
   const imagesList = product.images?.length ? product.images : [product.image];
 
-  // Savatga qo'shish funksiyasi
-  const handleAddToCart = () => {
-    toast.success(`Товар добавлен в корзину! (${quantity} шт.)`, {
-      style: {
-        background: '#10B981',
-        color: '#fff',
-        padding: '12px 16px',
-        borderRadius: '12px',
-        fontWeight: '500',
-      },
-      iconTheme: {
-        primary: '#fff',
-        secondary: '#10B981',
-      },
-    });
-  };
+  // Savatga qo'shish: POST /cart/items/
+  const handleAddToCart = () => addToCart(product.id, quantity);
 
   // Sevimlilarga qo'shish funksiyasi
   const handleAddToFavorites = () => {

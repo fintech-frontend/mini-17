@@ -9,6 +9,7 @@ import bag from '../public/bag.svg';
 import chiziq from '../public/chiziq.svg';
 import { ProductType } from "@/lib/data";
 import { useCompareStore } from "./useCompareStore";
+import { useAddToCart } from "@/lib/useAddToCart";
 
 interface ProductCardProps {
   product: ProductType;
@@ -17,6 +18,7 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const { addToCompare, removeFromCompare, isInCompare } = useCompareStore();
   const inCompare = isInCompare(product.id);
+  const { add: addToCart, isLoading: isAdding } = useAddToCart();
 
   const handleCompareClick = () => {
     if (inCompare) {
@@ -78,13 +80,25 @@ export default function ProductCard({ product }: ProductCardProps) {
         </div>
 
         <div className="flex items-center justify-between gap-1.5 sm:gap-2">
-          <Link
-            href={`/products/${product.id}`}
-            className="flex-1 min-w-0 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[11px] sm:text-xs font-medium py-2 sm:py-2.5 px-2 rounded-xl transition-colors flex items-center justify-center gap-1 sm:gap-1.5 shadow-sm"
-          >
-            <Image src={bag} alt="shoppingBag" className="w-3.5 h-3.5 sm:w-4 sm:h-4 object-contain shrink-0" />
-            <span className="truncate">Купить</span>
-          </Link>
+          {/* Omborda yo'q bo'lsa — savatga qo'shib bo'lmaydi, "Подробнее" ko'rsatamiz */}
+          {product.inStock === false ? (
+            <Link
+              href={`/products/${product.id}`}
+              className="flex-1 min-w-0 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[11px] sm:text-xs font-medium py-2 sm:py-2.5 px-2 rounded-xl transition-colors flex items-center justify-center shadow-sm"
+            >
+              <span className="truncate">Подробнее</span>
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => addToCart(product.id)}
+              disabled={isAdding}
+              className="flex-1 min-w-0 disabled:opacity-60 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[11px] sm:text-xs font-medium py-2 sm:py-2.5 px-2 rounded-xl transition-colors flex items-center justify-center gap-1 sm:gap-1.5 shadow-sm"
+            >
+              <Image src={bag} alt="shoppingBag" className="w-3.5 h-3.5 sm:w-4 sm:h-4 object-contain shrink-0" />
+              <span className="truncate">Купить</span>
+            </button>
+          )}
 
           <div className="flex gap-1 sm:gap-1.5 shrink-0">
             <button

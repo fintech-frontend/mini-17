@@ -25,6 +25,9 @@ export default function ProductBuyBox({
 }: ProductBuyBoxProps) {
   const { addToCompare, removeFromCompare, isInCompare } = useCompareStore();
   const inCompare = isInCompare(product.id);
+  const outOfStock = product.inStock === false;
+  // Ombordagi qoldiqdan ko'p qo'shib bo'lmaydi
+  const maxQuantity = product.stockQuantity && product.stockQuantity > 0 ? product.stockQuantity : Infinity;
 
   return (
     <div className="bg-white rounded-md p-5 shadow-[0_2px_16px_rgba(16,24,40,0.08)]">
@@ -69,17 +72,19 @@ export default function ProductBuyBox({
           <button
             type="button"
             onClick={() => setQuantity(Math.max(1, quantity - 1))}
+            disabled={outOfStock || quantity <= 1}
             aria-label="Уменьшить количество"
-            className="w-9 h-9 rounded-md bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition-colors"
+            className="w-9 h-9 rounded-md bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-gray-700 transition-colors"
           >
             <Minus size={14} />
           </button>
           <span className="w-9 text-center text-sm">{quantity}</span>
           <button
             type="button"
-            onClick={() => setQuantity(quantity + 1)}
+            onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+            disabled={outOfStock || quantity >= maxQuantity}
             aria-label="Увеличить количество"
-            className="w-9 h-9 rounded-md bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition-colors"
+            className="w-9 h-9 rounded-md bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-gray-700 transition-colors"
           >
             <Plus size={14} />
           </button>
@@ -91,9 +96,10 @@ export default function ProductBuyBox({
         <button
           type="button"
           onClick={onAddToCart}
-          className="w-full bg-[#1f6fd8] hover:bg-[#1a5fbc] text-white text-xs font-semibold uppercase tracking-wide py-3.5 rounded-md transition-colors"
+          disabled={outOfStock}
+          className="w-full bg-[#1f6fd8] hover:bg-[#1a5fbc] disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-semibold uppercase tracking-wide py-3.5 rounded-md transition-colors"
         >
-          Добавить в корзину
+          {outOfStock ? 'Нет в наличии' : 'Добавить в корзину'}
         </button>
         <button
           type="button"
