@@ -58,6 +58,7 @@ export const mapProduct = (p: ApiProduct): ProductType => ({
   brandName: p.brand?.name,
   badge: p.is_featured ? "Хит" : undefined,
   inStock: p.in_stock,
+  stockQuantity: p.stock_quantity,
 });
 
 export const mapProductDetail = (p: ApiProductDetail): ProductType => {

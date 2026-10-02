@@ -18,6 +18,7 @@ export interface ProductType {
   brandName?: string;
   badge?: string;
   inStock?: boolean;
+  stockQuantity?: number;  // omborda qolgan miqdor
   description?: string;
   specs?: ProductSpec[];  // xususiyatlar
 }

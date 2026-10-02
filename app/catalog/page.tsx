@@ -1,76 +1,105 @@
 "use client";
 
-import { useState } from "react";
-import ProductCard from "@/components/ProductCard";
-import { useGetCategoriesQuery } from "@/lib/api/catalogApi";
-import { useGetProductsQuery } from "@/lib/api/productsApi";
-import { styles } from "@/styles/index.styles";
+import Image from "next/image";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+import { useGetCategoryTreeQuery } from "@/lib/api/catalogApi";
+import { NO_IMAGE } from "@/lib/api/mappers";
+import { categoryHref, sortCategories } from "@/lib/catalogTree";
+
+const MAX_CHILDREN = 4;
 
 export default function CatalogPage() {
-  const [category, setCategory] = useState("");
-  const [search, setSearch] = useState("");
-
-  // GET /catalog/categories/
-  const { data: categories = [] } = useGetCategoriesQuery();
-  // GET /catalog/products/?category_slug=&search=
-  const { data, isFetching, isError } = useGetProductsQuery({
-    page_size: 40,
-    category_slug: category || undefined,
-    search: search.trim() || undefined,
-  });
-
-  const products = data?.results ?? [];
+  // GET /catalog/categories/tree/
+  const { data: tree = [], isLoading, isError, refetch } = useGetCategoryTreeQuery();
+  const categories = sortCategories(tree);
 
   return (
-    <main className={`${styles.container} px-4 sm:px-6 lg:px-8 py-6 sm:py-8`}>
-      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-5">
+    <div className="w-full max-w-350 mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Breadcrumb */}
+      <nav aria-label="Навигация" className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+        <Link href="/" className="hover:text-blue-600 transition-colors">
+          Стройоптторг
+        </Link>
+        <span className="text-gray-300">/</span>
+        <span className="text-gray-400">Каталог</span>
+      </nav>
+
+      <h1 className="text-2xl sm:text-3xl md:text-[40px] font-bold text-[#2C333D] mb-6 sm:mb-8">
         Каталог
       </h1>
 
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Поиск товаров"
-        className="w-full sm:max-w-md mb-4 px-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-
-      {/* Kategoriyalar */}
-      <ul className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto scrollbar-hide mb-5 sm:mb-6">
-        {[{ id: 0, slug: "", name: "Все товары" }, ...categories].map((cat) => (
-          <li key={cat.id} className="shrink-0">
-            <button
-              type="button"
-              onClick={() => setCategory(cat.slug)}
-              className={`px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all border whitespace-nowrap ${
-                cat.slug === category
-                  ? "bg-blue-50 text-blue-600 border-transparent"
-                  : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              {cat.name}
-            </button>
-          </li>
-        ))}
-      </ul>
-
       {isError ? (
-        <p className="text-sm text-gray-500 text-center py-10">Не удалось загрузить товары.</p>
+        <div className="text-center py-10">
+          <p className="text-sm text-gray-500 mb-3">Не удалось загрузить каталог.</p>
+          <button onClick={refetch} className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm">
+            Повторить
+          </button>
+        </div>
       ) : (
-        <div
-          className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-3 md:gap-4 transition-opacity ${
-            isFetching ? "opacity-60" : ""
-          }`}
-        >
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+          {isLoading
+            ? Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} className="h-72 rounded-md bg-gray-100 animate-pulse" />
+              ))
+            : categories.map((cat) => {
+                const children = sortCategories(cat.children ?? []);
+                return (
+                  <div
+                    key={cat.id}
+                    className="border border-gray-200 rounded-md p-4 hover:shadow-lg transition-shadow flex flex-col"
+                  >
+                    <Link href={categoryHref(cat.slug)} className="group block">
+                      <div className="relative h-28 mb-4">
+                        <Image
+                          src={NO_IMAGE}
+                          alt={cat.name}
+                          fill
+                          sizes="200px"
+                          className="object-contain"
+                        />
+                      </div>
+                      <h2 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        {cat.name}
+                      </h2>
+                    </Link>
+
+                    {children.length > 0 ? (
+                      <ul className="mt-3 space-y-2">
+                        {children.slice(0, MAX_CHILDREN).map((child) => (
+                          <li key={child.id}>
+                            <Link
+                              href={categoryHref(child.slug)}
+                              className="flex items-start gap-1.5 text-xs text-gray-600 hover:text-blue-600 transition-colors"
+                            >
+                              <ChevronRight size={12} className="mt-0.5 shrink-0" />
+                              {child.name}
+                            </Link>
+                          </li>
+                        ))}
+                        {children.length > MAX_CHILDREN && (
+                          <li>
+                            <Link
+                              href={categoryHref(cat.slug)}
+                              className="text-xs font-medium text-blue-600 hover:underline"
+                            >
+                              Все разделы ({children.length})
+                            </Link>
+                          </li>
+                        )}
+                      </ul>
+                    ) : (
+                      <p className="mt-2 text-xs text-gray-400">{cat.product_count} товаров</p>
+                    )}
+                  </div>
+                );
+              })}
         </div>
       )}
 
-      {!isFetching && !isError && products.length === 0 && (
-        <p className="text-sm text-gray-500 text-center py-10">Товары не найдены.</p>
+      {!isLoading && !isError && categories.length === 0 && (
+        <p className="text-sm text-gray-500 text-center py-10">Категории пока не добавлены.</p>
       )}
-    </main>
+    </div>
   );
 }

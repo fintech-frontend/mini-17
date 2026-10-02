@@ -9,10 +9,12 @@ import {
   Heart,
   ShoppingCart,
 } from "lucide-react";
+import CatalogMenu from "./CatalogMenu";
+import CartBadge from "./CartBadge";
 
 const Header = () => {
   return (
-    <header className="w-full bg-white text-[#4A4A4A] text-sm border-b border-gray-100">
+    <header className="relative w-full bg-white text-[#4A4A4A] text-sm border-b border-gray-100">
       {/* 1. TOP BAR */}
       <div className="border-b border-gray-100">
         <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 py-2 flex items-center justify-between gap-2">
@@ -99,17 +101,14 @@ const Header = () => {
           {/* Logo */}
           <Link href="/" className="flex-shrink-0">
             <img
-              src="logo 1.png"
+              src="/logo 1.png"
               alt="Стройоптторг"
               className="h-10 xl:h-11 w-auto object-contain"
             />
           </Link>
 
           {/* Katalog Tugmasi */}
-          <button className="flex items-center gap-2 bg-[#005bff] text-white px-5 py-2.5 rounded-xl hover:bg-[#004dc9] transition-colors font-semibold uppercase text-xs tracking-wider flex-shrink-0">
-            <Menu size={18} />
-            <span>КАТАЛОГ</span>
-          </button>
+          <CatalogMenu />
 
           {/* Qidiruv inputi */}
           <div className="flex-1 max-w-2xl flex items-center border-2 border-[#005bff] rounded-xl overflow-hidden relative bg-white">
@@ -168,7 +167,10 @@ const Header = () => {
               href="/karzinka"
               className="flex flex-col items-center gap-1 text-gray-700 hover:text-[#005bff] relative"
             >
-              <ShoppingCart size={22} strokeWidth={1.5} />
+              <span className="relative">
+                <ShoppingCart size={22} strokeWidth={1.5} />
+                <CartBadge />
+              </span>
               <span className="text-[11px] text-gray-600 whitespace-nowrap">
                 Корзина
               </span>
@@ -180,7 +182,7 @@ const Header = () => {
           <div className="flex items-center justify-between gap-2">
             <Link href="/" className="flex-shrink-0">
               <img
-                src="logo 1.png"
+                src="/logo 1.png"
                 alt="Стройоптторг"
                 className="h-8 md:h-10 w-auto object-contain"
               />
@@ -212,19 +214,17 @@ const Header = () => {
                 <Heart size={20} strokeWidth={1.5} />
               </Link>
               <Link
-                href="/cart"
+                href="/karzinka"
                 className="text-gray-700 hover:text-[#005bff] relative"
               >
                 <ShoppingCart size={20} strokeWidth={1.5} />
+                <CartBadge />
               </Link>
             </div>
           </div>
 
           <div className="flex items-center gap-2 pt-1 w-full">
-            <button className="flex items-center gap-1.5 bg-[#005bff] text-white px-3.5 sm:px-5 py-2.5 rounded-xl font-semibold uppercase text-xs tracking-wider flex-shrink-0">
-              <Menu size={16} />
-              <span>КАТАЛОГ</span>
-            </button>
+            <CatalogMenu compact />
 
             <div className="flex-1 flex items-center border-2 border-[#005bff] rounded-xl overflow-hidden relative bg-white">
               <input

@@ -17,7 +17,7 @@ const Footer = () => {
           <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-4">
             <Link href="/" className="flex-shrink-0">
               <img
-                src="logo 1.png"
+                src="/logo 1.png"
                 alt="Стройоптторг"
                 className="h-8 sm:h-10 w-auto object-contain"
               />
@@ -73,7 +73,7 @@ const Footer = () => {
                 <Link href="/about" className="hover:text-[#005bff]">
                   О компании
                 </Link>
-                <Link href="/payment" className="hover:text-[#005bff]">
+                <Link href="/tolov" className="hover:text-[#005bff]">
                   Оплата
                 </Link>
                 <Link href="/delivery" className="hover:text-[#005bff]">
@@ -185,7 +185,7 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/payment" className="hover:text-[#005bff]">
+                <Link href="/tolov" className="hover:text-[#005bff]">
                   Оплата
                 </Link>
               </li>
