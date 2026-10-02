@@ -40,7 +40,7 @@ export const mapArticle = (a: ApiArticle) => ({
   excerpt: "",
   date: formatDate(a.published_at),
   image: a.image || NO_IMAGE,
-  href: `/news/${a.slug}`,
+  href: `/blog/${a.slug}`,
 });
 
 // API mahsulotini UI dagi ProductType ko'rinishiga o'tkazish

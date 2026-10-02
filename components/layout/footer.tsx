@@ -3,10 +3,12 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Send, ChevronDown } from "lucide-react";
+import { useCallbackModal } from "@/components/CallbackModal";
 
 const Footer = () => {
   const [isInfoOpen, setIsInfoOpen] = useState(true);
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const openCallback = useCallbackModal((s) => s.open);
 
   return (
     <footer className="w-full bg-[#F4F5F7] text-[#333333] pt-6 sm:pt-8 pb-6 text-xs sm:text-sm border-t border-gray-200">
@@ -17,7 +19,7 @@ const Footer = () => {
           <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-4">
             <Link href="/" className="flex-shrink-0">
               <img
-                src="logo 1.png"
+                src="/logo 1.png"
                 alt="Стройоптторг"
                 className="h-8 sm:h-10 w-auto object-contain"
               />
@@ -47,7 +49,11 @@ const Footer = () => {
               </span>
             </div>
 
-            <button className="border border-[#D03020] text-[#D03020] px-3 sm:px-5 py-2 rounded text-[11px] sm:text-xs font-semibold hover:bg-[#D03020] hover:text-white transition-colors uppercase whitespace-nowrap">
+            <button
+              type="button"
+              onClick={openCallback}
+              className="border border-[#D03020] text-[#D03020] px-3 sm:px-5 py-2 rounded text-[11px] sm:text-xs font-semibold hover:bg-[#D03020] hover:text-white transition-colors uppercase whitespace-nowrap"
+            >
               ЗАКАЗАТЬ ЗВОНОК
             </button>
           </div>
@@ -70,16 +76,16 @@ const Footer = () => {
             </button>
             {isInfoOpen && (
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 pt-3 text-xs text-[#555555]">
-                <Link href="/about" className="hover:text-[#005bff]">
+                <Link href="/komponiyaHaqida" className="hover:text-[#005bff]">
                   О компании
                 </Link>
                 <Link href="/payment" className="hover:text-[#005bff]">
                   Оплата
                 </Link>
-                <Link href="/delivery" className="hover:text-[#005bff]">
+                <Link href="/yetkazibBerish" className="hover:text-[#005bff]">
                   Доставка
                 </Link>
-                <Link href="/returns" className="hover:text-[#005bff]">
+                <Link href="/qaytarish" className="hover:text-[#005bff]">
                   Возврат
                 </Link>
                 <Link href="/reviews" className="hover:text-[#005bff]">
@@ -88,10 +94,10 @@ const Footer = () => {
                 <Link href="/faq" className="hover:text-[#005bff]">
                   Вопрос-ответ
                 </Link>
-                <Link href="/news" className="hover:text-[#005bff]">
-                  Новости
+                <Link href="/blog" className="hover:text-[#005bff]">
+                  Блог
                 </Link>
-                <Link href="/contacts" className="hover:text-[#005bff]">
+                <Link href="/aloqa" className="hover:text-[#005bff]">
                   Контакты
                 </Link>
                 <Link href="/auth" className="hover:text-[#005bff]">
@@ -180,7 +186,7 @@ const Footer = () => {
             </h4>
             <ul className="space-y-2 text-xs text-[#555555]">
               <li>
-                <Link href="/about" className="hover:text-[#005bff]">
+                <Link href="/komponiyaHaqida" className="hover:text-[#005bff]">
                   О компании
                 </Link>
               </li>
@@ -190,12 +196,12 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/delivery" className="hover:text-[#005bff]">
+                <Link href="/yetkazibBerish" className="hover:text-[#005bff]">
                   Доставка
                 </Link>
               </li>
               <li>
-                <Link href="/returns" className="hover:text-[#005bff]">
+                <Link href="/qaytarish" className="hover:text-[#005bff]">
                   Возврат
                 </Link>
               </li>
@@ -215,12 +221,12 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/news" className="hover:text-[#005bff]">
-                  Новости
+                <Link href="/blog" className="hover:text-[#005bff]">
+                  Блог
                 </Link>
               </li>
               <li>
-                <Link href="/contacts" className="hover:text-[#005bff]">
+                <Link href="/aloqa" className="hover:text-[#005bff]">
                   Контакты
                 </Link>
               </li>
