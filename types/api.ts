@@ -159,6 +159,7 @@ export interface ProductsQueryParams {
   ordering?: string;
   category_slug?: string;
   brand_slug?: string;
+  brand?: number[];       // bir nechta brend: brand=1&brand=2
   featured?: boolean;
   discount?: boolean;
   in_stock?: boolean;

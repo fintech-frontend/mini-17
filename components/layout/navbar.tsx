@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { useFavoritesStore } from "@/components/useFavoritesStore";
 import { useCompareStore } from "@/components/useCompareStore";
-import { useGetCartQuery } from "@/lib/api/cartApi";
 import { useMounted } from "@/lib/useMounted";
 import { useCallbackModal } from "@/components/CallbackModal";
 
@@ -24,20 +23,20 @@ const Badge = ({ count }: { count: number }) =>
       {count > 99 ? "99+" : count}
     </span>
   ) : null;
+import CatalogMenu from "./CatalogMenu";
+import CartBadge from "./CartBadge";
 
 const Header = () => {
   const mounted = useMounted();
   const favoritesCount = useFavoritesStore((s) => s.items.length);
   const compareCount = useCompareStore((s) => s.items.length);
-  const { data: cart } = useGetCartQuery();
   const openCallback = useCallbackModal((s) => s.open);
 
   const favCount = mounted ? favoritesCount : 0;
   const cmpCount = mounted ? compareCount : 0;
-  const cartCount = cart?.totals.item_count ?? 0;
 
   return (
-    <header className="w-full bg-white text-[#4A4A4A] text-sm border-b border-gray-100">
+    <header className="relative w-full bg-white text-[#4A4A4A] text-sm border-b border-gray-100">
       {/* 1. TOP BAR */}
       <div className="border-b border-gray-100">
         <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 py-2 flex items-center justify-between gap-2">
@@ -135,10 +134,7 @@ const Header = () => {
           </Link>
 
           {/* Katalog Tugmasi */}
-          <button className="flex items-center gap-2 bg-[#005bff] text-white px-5 py-2.5 rounded-xl hover:bg-[#004dc9] transition-colors font-semibold uppercase text-xs tracking-wider flex-shrink-0">
-            <Menu size={18} />
-            <span>КАТАЛОГ</span>
-          </button>
+          <CatalogMenu />
 
           {/* Qidiruv inputi */}
           <div className="flex-1 max-w-2xl flex items-center border-2 border-[#005bff] rounded-xl overflow-hidden relative bg-white">
@@ -205,7 +201,7 @@ const Header = () => {
             >
               <span className="relative">
                 <ShoppingCart size={22} strokeWidth={1.5} />
-                <Badge count={cartCount} />
+                <CartBadge />
               </span>
               <span className="text-[11px] text-gray-600 whitespace-nowrap">
                 Корзина
@@ -256,16 +252,13 @@ const Header = () => {
                 className="text-gray-700 hover:text-[#005bff] relative"
               >
                 <ShoppingCart size={20} strokeWidth={1.5} />
-                <Badge count={cartCount} />
+                <CartBadge />
               </Link>
             </div>
           </div>
 
           <div className="flex items-center gap-2 pt-1 w-full">
-            <button className="flex items-center gap-1.5 bg-[#005bff] text-white px-3.5 sm:px-5 py-2.5 rounded-xl font-semibold uppercase text-xs tracking-wider flex-shrink-0">
-              <Menu size={16} />
-              <span>КАТАЛОГ</span>
-            </button>
+            <CatalogMenu compact />
 
             <div className="flex-1 flex items-center border-2 border-[#005bff] rounded-xl overflow-hidden relative bg-white">
               <input

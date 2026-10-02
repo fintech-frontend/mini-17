@@ -79,7 +79,7 @@ const Footer = () => {
                 <Link href="/komponiyaHaqida" className="hover:text-[#005bff]">
                   О компании
                 </Link>
-                <Link href="/payment" className="hover:text-[#005bff]">
+                <Link href="/tolov" className="hover:text-[#005bff]">
                   Оплата
                 </Link>
                 <Link href="/yetkazibBerish" className="hover:text-[#005bff]">
@@ -191,7 +191,7 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/payment" className="hover:text-[#005bff]">
+                <Link href="/tolov" className="hover:text-[#005bff]">
                   Оплата
                 </Link>
               </li>

@@ -1,353 +1,367 @@
 "use client";
 
-import React, { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import toast from "react-hot-toast";
+import { Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import {
   useApplyPromoMutation,
   useGetCartQuery,
   useRemoveCartItemMutation,
+  useRemovePromoMutation,
   useUpdateCartItemMutation,
 } from "@/lib/api/cartApi";
+import { useGetProductsQuery } from "@/lib/api/productsApi";
+import { NO_IMAGE } from "@/lib/api/mappers";
+import { getApiErrorMessage } from "@/lib/useAddToCart";
+import ProductCarousel from "@/components/ProductCarusel";
 
-const PLACEHOLDER_IMAGE =
-  "https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=200&auto=format&fit=crop&q=80";
-const MAX_TIER = 7000;
+// Summa bo'yicha chegirma pog'onalari
+const DISCOUNT_TIERS = [
+  { from: 3000, percent: 5, color: "bg-emerald-600" },
+  { from: 7000, percent: 10, color: "bg-orange-500" },
+  { from: 20000, percent: 15, color: "bg-rose-600" },
+];
+
+const rub = (value: number) => `${Math.round(value).toLocaleString("ru-RU")} ₽`;
 
 export default function CartPage() {
-  const { data, isLoading, isError } = useGetCartQuery();
-  const [updateItem] = useUpdateCartItemMutation();
+  // GET /cart/
+  const { data, isLoading, isError, refetch } = useGetCartQuery();
+  const [updateItem, { isLoading: isUpdating }] = useUpdateCartItemMutation();
   const [removeItem] = useRemoveCartItemMutation();
-  const [applyPromo, { isLoading: isApplying, error: promoError }] =
-    useApplyPromoMutation();
-  const [promoCode, setPromoCode] = useState("");
+  const [applyPromo, { isLoading: isApplying }] = useApplyPromoMutation();
+  const [removePromo] = useRemovePromoMutation();
+  // "Возможно вас заинтересуют" uchun
+  const { data: suggested } = useGetProductsQuery({ page_size: 10 });
 
-  // API ma'lumotini sahifa formatiga o'tkazamiz
-  const cart = (data?.items ?? []).map((item) => ({
-    id: item.product.id,
-    title: item.product.name,
-    article: item.product.article,
-    price: Number(item.price),
-    oldPrice: item.product.old_price ? Number(item.product.old_price) : null,
-    quantity: item.quantity,
-    image: item.product.main_image ?? PLACEHOLDER_IMAGE,
-  }));
+  const [promoCode, setPromoCode] = useState("");
+  const [showTiers, setShowTiers] = useState(false);
+
+  const items = data?.items ?? [];
   const totals = data?.totals;
   const subtotal = Number(totals?.subtotal ?? 0);
-  const totalSum = Number(totals?.total ?? 0);
-  const progress = Math.min((subtotal / MAX_TIER) * 100, 100);
+  const cartDiscount = Number(totals?.cart_discount ?? 0);
+  const promoDiscount = Number(totals?.promo_discount ?? 0);
+  const total = Number(totals?.total ?? 0);
 
-  // Miqdorni o'zgartirish (+ / -)
-  const updateQuantity = (id: number, delta: number) => {
-    const item = cart.find((i) => i.id === id);
-    if (!item) return;
-    const newQty = item.quantity + delta;
-    if (newQty < 1) return;
-    updateItem({ product_id: id, quantity: newQty });
+  // Keyingi chegirma pog'onasi va progress
+  const nextTier = DISCOUNT_TIERS.find((t) => subtotal < t.from);
+  const prevFrom = [...DISCOUNT_TIERS].reverse().find((t) => subtotal >= t.from)?.from ?? 0;
+  const progress = nextTier
+    ? Math.min(((subtotal - prevFrom) / (nextTier.from - prevFrom)) * 100, 100)
+    : 100;
+
+  const cartIds = new Set(items.map((i) => i.product.id));
+  const suggestions = (suggested?.results ?? []).filter((p) => !cartIds.has(p.id));
+
+  const changeQuantity = async (productId: number, quantity: number) => {
+    if (quantity < 1) return;
+    try {
+      await updateItem({ product_id: productId, quantity }).unwrap();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Не удалось изменить количество"));
+    }
   };
 
-  // Savatdan o'chirish
-  const removeFromCart = (id: number) => {
-    removeItem(id);
+  const handleApplyPromo = async () => {
+    const code = promoCode.trim();
+    if (!code) return;
+    try {
+      await applyPromo(code).unwrap();
+      toast.success("Промокод применён");
+      setPromoCode("");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Промокод не найден"));
+    }
   };
-
-  const handleApplyPromo = () => {
-    if (promoCode.trim()) applyPromo(promoCode.trim());
-  };
-
-  if (isLoading) {
-    return <div className="py-20 text-center text-gray-500">Загрузка...</div>;
-  }
-
-  if (isError) {
-    return (
-      <div className="py-20 text-center text-red-500">
-        Не удалось загрузить корзину
-      </div>
-    );
-  }
 
   return (
-    <div className="w-full bg-[#fafbfc] min-h-screen py-4 md:py-8 px-4 sm:px-8 md:px-12 font-sans text-slate-800">
-      <div className="max-w-[1240px] mx-auto">
-        {/* Sarlavha */}
-        <h1 className="text-xl md:text-3xl font-bold mb-4 md:mb-6 text-slate-900">
-          Корзина товаров
-        </h1>
+    <div className="w-full max-w-350 mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Breadcrumb */}
+      <nav aria-label="Навигация" className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+        <Link href="/" className="hover:text-blue-600 transition-colors">
+          Стройоптторг
+        </Link>
+        <span className="text-gray-300">/</span>
+        <span className="text-gray-400">Корзина товаров</span>
+      </nav>
 
-        {/* Chegirma Progress Bar (Barcha qurilmalarda bir xil ko'rinadi) */}
-        <div className="bg-white border border-gray-100 rounded-lg p-4 md:p-5 mb-6 shadow-sm">
-          <div className="flex justify-between items-center text-xs font-medium text-slate-700 mb-2">
-            <span>
-              Ваша скидка от суммы заказа:{" "}
-              <strong className="text-blue-600">
-                {Number(totals?.discount_total ?? 0).toLocaleString()} ₽
-              </strong>
-            </span>
+      <h1 className="text-2xl sm:text-3xl md:text-[40px] font-bold text-[#2C333D] mb-5 sm:mb-6">
+        Корзина товаров
+      </h1>
 
-            <div className="hidden md:flex items-center gap-3 bg-white border border-gray-100 shadow-md rounded-lg px-3 py-1.5 text-[11px]">
-              <span className="text-gray-500">
-                Сейчас у нас действуют следующие пороги:
-              </span>
-              <span>
-                от <strong>3 000 ₽</strong>{" "}
-                <span className="bg-emerald-600 text-white text-[9px] px-1 rounded font-bold">
-                  -5%
-                </span>
-              </span>
-              <span>
-                от <strong>7 000 ₽</strong>{" "}
-                <span className="bg-orange-500 text-white text-[9px] px-1 rounded font-bold">
-                  -10%
-                </span>
-              </span>
-            </div>
-          </div>
-
-          <div className="relative w-full h-2 bg-gray-100 rounded-full my-3 overflow-hidden">
-            <div className="h-full bg-blue-500 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-
-          <div className="flex justify-between text-[11px] text-gray-400 font-medium">
-            <span>{subtotal.toLocaleString()} ₽</span>
-            <span>7 000 ₽</span>
-          </div>
+      {isLoading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6">
+          <div className="h-96 rounded-md bg-gray-100 animate-pulse" />
+          <div className="h-72 rounded-md bg-gray-100 animate-pulse" />
         </div>
+      ) : isError ? (
+        <div className="text-center py-16">
+          <p className="text-sm text-gray-500 mb-3">Не удалось загрузить корзину.</p>
+          <button onClick={refetch} className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm">
+            Повторить
+          </button>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="border border-gray-200 rounded-md py-16 px-4 text-center">
+          <ShoppingCart size={44} strokeWidth={1.25} className="mx-auto text-gray-300 mb-4" />
+          <p className="text-lg font-semibold text-gray-900 mb-1">Ваша корзина пуста</p>
+          <p className="text-sm text-gray-500 mb-6">Добавьте товары из каталога, чтобы оформить заказ.</p>
+          <Link
+            href="/catalog"
+            className="inline-block bg-[#1f6fd8] hover:bg-[#1a5fbc] text-white text-xs font-semibold uppercase tracking-wide px-6 py-3.5 rounded-md transition-colors"
+          >
+            Перейти в каталог
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_330px] gap-6 items-start">
+          <div className="space-y-4 min-w-0">
+            {/* Summa bo'yicha chegirma */}
+            <div className="relative border border-gray-200 rounded-md p-4 sm:p-5">
+              <p className="text-xs text-gray-700 mb-2">
+                Ваша скидка от суммы заказа:{" "}
+                <strong className="text-blue-600">{rub(cartDiscount)}</strong>
+                {totals?.tier_percent ? (
+                  <span className="text-gray-400"> ({totals.tier_percent}%)</span>
+                ) : null}
+              </p>
 
-        {cart.length === 0 && (
-          <div className="bg-white border border-gray-100 rounded-lg p-10 mb-6 text-center text-gray-500 shadow-sm">
-            Корзина пуста
-          </div>
-        )}
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[11px] text-gray-500 mt-1.5">
+                <span>{rub(subtotal)}</span>
+                {nextTier && <span>{rub(nextTier.from)}</span>}
+              </div>
 
-        {cart.length === 0 && (
-          <div className="bg-white border border-gray-100 rounded-lg p-10 mb-6 text-center text-gray-500 shadow-sm">
-            Корзина пуста
-          </div>
-        )}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-3">
+                <p className="text-xs text-gray-700">
+                  {nextTier ? (
+                    <>
+                      Добавьте в корзину товаров на{" "}
+                      <strong className="text-blue-600">{rub(nextTier.from - subtotal)}</strong> и получите
+                      скидку {nextTier.percent}%
+                    </>
+                  ) : (
+                    <>У вас максимальная скидка от суммы заказа</>
+                  )}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowTiers((v) => !v)}
+                  className="w-fit text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-md transition-colors"
+                >
+                  Информация о скидках от суммы корзины
+                </button>
+              </div>
 
-        {/* --- 1. MOBILE VERSIYA (Faqat telefonda ko'rinadi: md breakpointdan kichik) --- */}
-        <div className="block md:hidden bg-white border border-gray-100 rounded-lg p-3 mb-6 shadow-sm">
-          <div className="divide-y divide-gray-100">
-            {cart.map((item) => (
-              <div key={item.id} className="py-4 space-y-3">
-                {/* Rasm va Nom */}
-                <div className="flex items-start gap-3">
-                  <div className="w-16 h-16 shrink-0 relative bg-white rounded-md flex items-center justify-center p-1 border border-gray-50">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      sizes="64px"
-                      className="object-contain"
-                    />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xs font-semibold text-slate-900 leading-snug line-clamp-2">
-                      {item.title}
-                    </h3>
-                    <p className="text-[10px] text-gray-400 mt-1">
-                      Артикул: {item.article}
+              {/* Pog'onalar haqida oyna */}
+              {showTiers && (
+                <div className="absolute z-20 left-4 right-4 sm:right-auto sm:left-1/3 sm:max-w-md top-3 bg-white rounded-md shadow-[0_8px_32px_rgba(16,24,40,0.15)] p-4">
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <p className="text-sm font-semibold text-blue-600">
+                      Сейчас у нас действуют следующие пороги:
                     </p>
-                  </div>
-                </div>
-
-                {/* Counter + Price + Trash */}
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => updateQuantity(item.id, -1)}
-                      className="w-9 h-9 rounded-full bg-[#f3f4f6] hover:bg-gray-200 active:scale-95 text-slate-600 font-medium text-base flex items-center justify-center"
-                    >
-                      -
-                    </button>
-                    <span className="text-xs font-bold text-slate-800 min-w-[12px] text-center">
-                      {item.quantity}
-                    </span>
-                    <button
-                      onClick={() => updateQuantity(item.id, 1)}
-                      className="w-9 h-9 rounded-full bg-[#f3f4f6] hover:bg-gray-200 active:scale-95 text-slate-600 font-medium text-base flex items-center justify-center"
-                    >
-                      +
+                    <button type="button" onClick={() => setShowTiers(false)} aria-label="Закрыть">
+                      <X size={16} className="text-gray-400" />
                     </button>
                   </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="text-sm font-bold text-blue-600">
-                        {(item.price * item.quantity).toLocaleString()} ₽
-                      </div>
-                      {item.oldPrice && item.oldPrice > item.price && (
-                        <div className="text-[10px] text-gray-400 line-through">
-                          {(item.oldPrice * item.quantity).toLocaleString()} ₽
-                        </div>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="text-gray-300 hover:text-red-500 p-1"
-                    >
-                      <Trash2 size={18} strokeWidth={1.5} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* --- 2. DESKTOP VERSIYA (Faqat kompyuterda ko'rinadi: md breakpointdan katta) --- */}
-        <div className="hidden md:grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-12">
-          {/* Savat Jadvali */}
-          <div className="lg:col-span-8 bg-white border border-gray-100 rounded-lg p-6 shadow-sm overflow-x-auto">
-            <table className="w-full text-left min-w-[550px]">
-              <thead>
-                <tr className="text-[10px] uppercase font-bold text-gray-400 border-b border-gray-100 pb-3">
-                  <th className="pb-3 w-[45%]">ТОВАР</th>
-                  <th className="pb-3 text-center">ЦЕНА</th>
-                  <th className="pb-3 text-center">КОЛИЧЕСТВО</th>
-                  <th className="pb-3 text-right">СУММА</th>
-                  <th className="pb-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 text-xs">
-                {cart.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50/50">
-                    <td className="py-4 pr-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-14 h-14 shrink-0 relative rounded border border-gray-100 p-1 bg-white">
-                          <img
-                            src={item.image}
-                            alt={item.title}
-                            sizes="56px"
-                            className="object-contain"
-                          />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-slate-800 line-clamp-2 max-w-[220px]">
-                            {item.title}
-                          </h3>
-                          <span className="text-[10px] text-gray-400 block mt-0.5">
-                            Артикул: {item.article}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="py-4 text-center whitespace-nowrap">
-                      <div className="font-bold text-slate-800">
-                        {item.price.toLocaleString()} ₽
-                      </div>
-                    </td>
-
-                    <td className="py-4 text-center whitespace-nowrap">
-                      <div className="inline-flex items-center bg-gray-50 border border-gray-200 rounded-md">
-                        <button
-                          onClick={() => updateQuantity(item.id, -1)}
-                          className="w-7 h-7 flex items-center justify-center text-gray-500 hover:bg-gray-100"
-                        >
-                          -
-                        </button>
-                        <span className="w-8 text-center text-xs font-semibold">
-                          {item.quantity}
+                  <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-gray-700">
+                    {DISCOUNT_TIERS.map((tier) => (
+                      <span key={tier.from} className="flex items-center gap-1.5">
+                        от {rub(tier.from)} –
+                        <span className={`${tier.color} text-white text-[10px] font-semibold px-1.5 py-0.5 rounded`}>
+                          {tier.percent}%
                         </span>
-                        <button
-                          onClick={() => updateQuantity(item.id, 1)}
-                          className="w-7 h-7 flex items-center justify-center text-gray-500 hover:bg-gray-100"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </td>
-
-                    <td className="py-4 text-right font-extrabold text-blue-600 whitespace-nowrap">
-                      {(item.price * item.quantity).toLocaleString()} ₽
-                    </td>
-
-                    <td className="py-4 pl-3 text-right">
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="text-gray-300 hover:text-red-500 p-1"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* O'ng tarafdagi Итого bloki */}
-          <div className="lg:col-span-4 bg-white border border-gray-100 rounded-lg p-6 shadow-sm space-y-4">
-            <h2 className="text-lg font-bold text-slate-900 border-b border-gray-100 pb-3">
-              Итого
-            </h2>
-
-            <div className="space-y-2.5 text-xs text-gray-600">
-              <div className="flex justify-between items-center">
-                <span>Скидка по промокоду</span>
-                <span>
-                  {Number(totals?.promo_discount ?? 0).toLocaleString()} ₽
-                </span>
-              </div>
-              <div className="flex justify-between items-center pt-2 text-sm font-bold text-slate-900">
-                <span>Сумма</span>
-                <span className="text-blue-600 text-lg font-extrabold">
-                  {totalSum.toLocaleString()} ₽
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-2 space-y-2">
-              <input
-                type="text"
-                placeholder="Промокод"
-                value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleApplyPromo()}
-                className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={handleApplyPromo}
-                disabled={isApplying}
-                className="w-full py-2 text-xs font-semibold border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50"
-              >
-                {data?.promo_code ? `Промокод: ${data.promo_code}` : "Применить"}
-              </button>
-              {promoError && (
-                <p className="text-[11px] text-red-500">Неверный промокод</p>
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 
-            <button
-              type="button"
-              className="w-full py-3 bg-[#1976d2] hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded transition-colors shadow-sm mt-4"
-            >
-              ПЕРЕЙТИ К ОФОРМЛЕНИЮ
-            </button>
-          </div>
-        </div>
+            {/* Mahsulotlar jadvali */}
+            <div className="border border-gray-200 rounded-md px-4 sm:px-5">
+              <div className="hidden md:grid grid-cols-[minmax(0,1fr)_110px_130px_110px_32px] gap-4 py-4 text-[11px] font-semibold uppercase text-gray-500 border-b border-gray-100">
+                <span>Товар</span>
+                <span>Цена</span>
+                <span>Количество</span>
+                <span>Сумма</span>
+                <span />
+              </div>
 
-        {/* Mobil uchun pastki "ПЕРЕЙТИ К ОФОРМЛЕНИЮ" tugmasi va Jami summa */}
-        <div className="block md:hidden bg-white border border-gray-100 rounded-lg p-4 shadow-sm space-y-3">
-          <div className="flex justify-between items-center text-sm font-bold">
-            <span>Итого:</span>
-            <span className="text-blue-600 text-lg font-extrabold">
-              {totalSum.toLocaleString()} ₽
-            </span>
+              {items.map((item) => {
+                const product = item.product;
+                const price = Number(item.price);
+                const oldPrice = product.old_price ? Number(product.old_price) : null;
+                return (
+                  <div
+                    key={item.id}
+                    className="grid grid-cols-[64px_minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1fr)_110px_130px_110px_32px] gap-x-4 gap-y-3 items-center py-4 border-b border-gray-100 last:border-b-0"
+                  >
+                    {/* Tovar */}
+                    <div className="contents md:flex md:items-center md:gap-4 min-w-0">
+                      <Link
+                        href={`/products/${product.id}`}
+                        className="relative w-16 h-16 shrink-0 row-span-2 md:row-span-1"
+                      >
+                        <Image
+                          src={product.main_image || NO_IMAGE}
+                          alt={product.name}
+                          fill
+                          sizes="64px"
+                          className="object-contain"
+                        />
+                      </Link>
+                      <div className="min-w-0">
+                        <Link
+                          href={`/products/${product.id}`}
+                          className="text-[13px] text-gray-900 hover:text-blue-600 line-clamp-2 transition-colors"
+                        >
+                          {product.name}
+                        </Link>
+                        <p className="text-[11px] text-gray-400 mt-1">Артикул: {product.article}</p>
+                      </div>
+                    </div>
+
+                    {/* O'chirish (telefonda o'ng yuqorida) */}
+                    <button
+                      type="button"
+                      onClick={() => removeItem(product.id)}
+                      aria-label="Удалить из корзины"
+                      className="md:hidden justify-self-end self-start text-gray-300 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+
+                    {/* Narx */}
+                    <div className="col-start-2 md:col-start-auto flex md:block items-baseline gap-2">
+                      <p className="text-[15px] font-semibold text-blue-600">{rub(price)}</p>
+                      {oldPrice && oldPrice > price && (
+                        <p className="text-[11px] text-gray-400 line-through">{rub(oldPrice)}</p>
+                      )}
+                    </div>
+
+                    {/* Miqdor */}
+                    <div className="col-start-2 md:col-start-auto flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => changeQuantity(product.id, item.quantity - 1)}
+                        disabled={item.quantity <= 1 || isUpdating}
+                        aria-label="Уменьшить количество"
+                        className="w-8 h-8 rounded-md bg-gray-100 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-gray-700"
+                      >
+                        <Minus size={13} />
+                      </button>
+                      <span className="w-8 text-center text-sm">{item.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => changeQuantity(product.id, item.quantity + 1)}
+                        disabled={isUpdating}
+                        aria-label="Увеличить количество"
+                        className="w-8 h-8 rounded-md bg-gray-100 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-gray-700"
+                      >
+                        <Plus size={13} />
+                      </button>
+                    </div>
+
+                    {/* Summa */}
+                    <p className="col-start-3 row-start-3 md:col-start-auto md:row-start-auto justify-self-end md:justify-self-start text-[15px] font-semibold text-gray-900 whitespace-nowrap">
+                      {rub(Number(item.total))}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => removeItem(product.id)}
+                      aria-label="Удалить из корзины"
+                      className="hidden md:flex text-gray-300 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <button
-            type="button"
-            className="w-full py-3 bg-[#1976d2] active:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg"
-          >
-            ПЕРЕЙТИ К ОФОРМЛЕНИЮ
-          </button>
+
+          {/* Итого */}
+          <aside className="lg:sticky lg:top-4 rounded-md p-5 shadow-[0_2px_16px_rgba(16,24,40,0.08)] bg-white">
+            <h2 className="text-lg font-semibold text-gray-900 pb-4 mb-4 border-b border-gray-100">Итого</h2>
+
+            <dl className="space-y-3 text-xs text-gray-700">
+              <div className="flex justify-between">
+                <dt>Товары ({totals?.item_count ?? items.length})</dt>
+                <dd>{rub(subtotal)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>Скидка по промокоду</dt>
+                <dd>{rub(promoDiscount)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>Скидка от суммы заказа</dt>
+                <dd>{rub(cartDiscount)}</dd>
+              </div>
+              <div className="flex justify-between items-baseline pt-3 border-t border-gray-100">
+                <dt className="text-sm font-semibold text-gray-900">Сумма</dt>
+                <dd className="text-xl font-semibold text-[#1d2b4f]">{rub(total)}</dd>
+              </div>
+            </dl>
+
+            {/* Promokod */}
+            <div className="mt-5 space-y-2.5">
+              {data?.promo_code ? (
+                <div className="flex items-center justify-between text-xs bg-emerald-50 text-emerald-700 rounded-md px-3 py-2.5">
+                  <span>
+                    Промокод <strong>{data.promo_code}</strong> применён
+                  </span>
+                  <button type="button" onClick={() => removePromo()} aria-label="Удалить промокод">
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleApplyPromo()}
+                    placeholder="Промокод"
+                    className="w-full px-4 py-3 text-sm border border-gray-200 rounded-md outline-none focus:border-blue-500 placeholder:text-gray-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyPromo}
+                    disabled={isApplying || !promoCode.trim()}
+                    className="w-full bg-gray-50 hover:bg-gray-100 disabled:opacity-60 text-[#1f6fd8] text-[13px] font-medium py-3 rounded-md transition-colors"
+                  >
+                    {isApplying ? "Проверяем..." : "Применить промокод"}
+                  </button>
+                </>
+              )}
+            </div>
+
+            <Link
+              href="/chekoutPage"
+              className="mt-4 block text-center bg-[#1f6fd8] hover:bg-[#1a5fbc] text-white text-xs font-semibold uppercase tracking-wide py-3.5 rounded-md transition-colors"
+            >
+              Перейти к оформлению
+            </Link>
+          </aside>
         </div>
-      </div>
+      )}
+
+      {/* Tavsiyalar */}
+      {suggestions.length > 0 && (
+        <div className="mt-10">
+          <ProductCarousel title="Возможно вас заинтересуют" products={suggestions} />
+        </div>
+      )}
     </div>
   );
 }
