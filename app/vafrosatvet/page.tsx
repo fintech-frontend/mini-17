@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Plus, Minus, Check } from "lucide-react";
+import { useGetBannersQuery, useGetFaqQuery } from "@/lib/api/contentApi";
 
 // Savol va javoblar tipi
 interface FaqItem {
@@ -9,8 +10,8 @@ interface FaqItem {
   answer: string;
 }
 
-// Savol va javoblar ro'yxati
-const FAQ_ITEMS: FaqItem[] = [
+// API bo'sh bo'lsa ko'rsatiladigan savol va javoblar
+const FALLBACK_FAQ: FaqItem[] = [
   {
     question:
       "Могу ли я сделать возврат материалов, не использованных в процессе строительства?",
@@ -67,6 +68,10 @@ export default function FaqPage() {
   const [agreed, setAgreed] = useState<boolean>(false);
   const [email, setEmail] = useState<string>("");
 
+  const { data: faqData, isLoading } = useGetFaqQuery();
+  const { data: banners } = useGetBannersQuery();
+  const FAQ_ITEMS: FaqItem[] = faqData?.length ? faqData : FALLBACK_FAQ;
+
   const toggleAccordion = (index: number) => {
     setOpenIndex(openIndex === index ? null : index);
   };
@@ -79,6 +84,10 @@ export default function FaqPage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-8">
             Вопрос-ответ
           </h1>
+
+          {isLoading && (
+            <p className="text-sm text-gray-400">Загрузка...</p>
+          )}
 
           <div className="divide-y divide-gray-100">
             {FAQ_ITEMS.map((item, index) => {
@@ -117,39 +126,66 @@ export default function FaqPage() {
 
         {/* ==================== O'NG PANAL: BANNERLAR VA RASSILKA ==================== */}
         <div className="lg:col-span-1 space-y-5">
-          {/* Banner 1: Все для отопления */}
-          <div className="relative rounded-2xl overflow-hidden h-44 shadow-sm group cursor-pointer">
-            <img
-              src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80"
-              alt="Все для отопления"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent p-5 flex flex-col justify-start items-start space-y-2">
-              <h3 className="text-lg font-bold text-slate-900 leading-snug max-w-[150px]">
-                Все для отопления
-              </h3>
-              <span className="bg-black text-white text-[10px] font-bold px-2 py-0.5 rounded">
-                до -30%
-              </span>
-            </div>
-          </div>
+          {/* API bannerlari */}
+          {banners?.map((banner) => (
+            <a
+              key={banner.id}
+              href={banner.link || "#"}
+              className="relative block rounded-2xl overflow-hidden h-44 shadow-sm group"
+            >
+              {banner.image && (
+                <img
+                  src={banner.image}
+                  alt={banner.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent p-5">
+                <h3 className="text-lg font-bold text-slate-900 leading-snug max-w-[160px]">
+                  {banner.title}
+                </h3>
+              </div>
+            </a>
+          ))}
 
-          {/* Banner 2: Лакокрасочные материалы */}
-          <div className="relative rounded-2xl overflow-hidden h-44 shadow-sm group cursor-pointer">
-            <img
-              src="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600&auto=format&fit=crop&q=80"
-              alt="Лакокрасочные материалы"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent p-5 flex flex-col justify-start items-start space-y-2">
-              <h3 className="text-lg font-bold text-slate-900 leading-snug max-w-[160px]">
-                Лакокрасочные материалы
-              </h3>
-              <span className="bg-black text-white text-[10px] font-bold px-2 py-0.5 rounded">
-                до -30%
-              </span>
-            </div>
-          </div>
+          {/* API'da banner bo'lmasa statik bannerlar */}
+          {!banners?.length && (
+            <>
+              {/* Banner 1: Все для отопления */}
+              <div className="relative rounded-2xl overflow-hidden h-44 shadow-sm group cursor-pointer">
+                <img
+                  src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80"
+                  alt="Все для отопления"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent p-5 flex flex-col justify-start items-start space-y-2">
+                  <h3 className="text-lg font-bold text-slate-900 leading-snug max-w-[150px]">
+                    Все для отопления
+                  </h3>
+                  <span className="bg-black text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                    до -30%
+                  </span>
+                </div>
+              </div>
+    
+              {/* Banner 2: Лакокрасочные материалы */}
+              <div className="relative rounded-2xl overflow-hidden h-44 shadow-sm group cursor-pointer">
+                <img
+                  src="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600&auto=format&fit=crop&q=80"
+                  alt="Лакокрасочные материалы"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent p-5 flex flex-col justify-start items-start space-y-2">
+                  <h3 className="text-lg font-bold text-slate-900 leading-snug max-w-[160px]">
+                    Лакокрасочные материалы
+                  </h3>
+                  <span className="bg-black text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                    до -30%
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Obuna bo'lish (Подпишитесь на рассылку) Bloki */}
           <div className="bg-[#f8f9fa] rounded-2xl p-6 space-y-4 text-center">

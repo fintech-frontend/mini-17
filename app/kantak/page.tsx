@@ -12,48 +12,64 @@ import {
   ChevronRight,
   ListOrdered,
 } from "lucide-react";
+import LoginForm from "@/components/auth/LoginForm";
+import {
+  useGetMyOrdersQuery,
+  useGetProfileQuery,
+  useLogoutMutation,
+} from "@/lib/api/authApi";
+import type { OrderStatus } from "@/lib/api/types";
 
-// Buyurtmalar ma'lumotlari
-const ORDERS = [
-  {
-    id: "#2365341-11",
-    date: "16 Августа 2023",
-    status: "ОБРАБОТКА",
-    statusType: "orange",
-    total: "36 829 ₽",
-  },
-  {
-    id: "#2356576-13",
-    date: "1 Августа 2023",
-    status: "ВЫПОЛНЕН",
-    statusType: "green",
-    total: "11 299 ₽",
-  },
-  {
-    id: "#577598-26",
-    date: "17 Июля 2023",
-    status: "ОТМЕНЕН",
-    statusType: "red",
-    total: "1 311 ₽",
-  },
-  {
-    id: "#436879-12",
-    date: "11 Января 2023",
-    status: "ОБРАБОТКА",
-    statusType: "orange",
-    total: "12 889 ₽",
-  },
-  {
-    id: "#2365341-11",
-    date: "10 Декабря 2022",
-    status: "ОБРАБОТКА",
-    statusType: "orange",
-    total: "2 829 ₽",
-  },
-];
+// Buyurtma statusi -> badge rangi
+const STATUS_COLOR: Record<OrderStatus, "orange" | "green" | "red"> = {
+  new: "orange",
+  awaiting_payment: "orange",
+  processing: "orange",
+  assembled: "orange",
+  shipped: "orange",
+  ready_for_pickup: "green",
+  completed: "green",
+  cancelled: "red",
+  refunded: "red",
+};
+
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<string>("orders");
+
+  const {
+    data: profile,
+    isLoading: profileLoading,
+    error: profileError,
+  } = useGetProfileQuery();
+  const isAuthed = !!profile;
+  const { data: ordersData, isLoading: ordersLoading } = useGetMyOrdersQuery(
+    undefined,
+    { skip: !isAuthed },
+  );
+  const [logout] = useLogoutMutation();
+
+  const ORDERS = (ordersData?.results ?? []).map((order) => ({
+    id: order.number,
+    date: formatDate(order.created_at),
+    status: order.status_display.toUpperCase(),
+    statusType: STATUS_COLOR[order.status],
+    total: `${Number(order.total).toLocaleString("ru-RU")} ₽`,
+  }));
+
+  const handleTabClick = (id: string) => {
+    if (id === "logout") {
+      logout();
+      return;
+    }
+    setActiveTab(id);
+  };
 
   // Tablar ro'yxati (count olib tashlandi)
   const sidebarItems = [
@@ -74,6 +90,15 @@ export default function ProfilePage() {
     { id: "password", label: "СМЕНИТЬ ПАРОЛЬ", icon: ShieldCheck },
     { id: "logout", label: "ВЫЙТИ", icon: LogOut },
   ];
+
+  if (profileLoading) {
+    return <div className="py-20 text-center text-gray-500">Загрузка...</div>;
+  }
+
+  // Token yo'q yoki eskirgan bo'lsa (401) — login formasi
+  if (profileError || !profile) {
+    return <LoginForm />;
+  }
 
   return (
     <div className="w-full bg-[#f8f9fa] min-h-screen py-6 px-4 md:px-8">
@@ -103,7 +128,7 @@ export default function ProfilePage() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => handleTabClick(item.id)}
                   className={`w-full flex items-center justify-between px-5 py-3.5 text-xs sm:text-sm font-medium transition-all border-b border-gray-50 last:border-none ${
                     isActive
                       ? "bg-[#0b1727] text-white"
@@ -131,7 +156,7 @@ export default function ProfilePage() {
             {/* Tepadagi Salomlashuv va 6 ta Karta-Tab */}
             <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm">
               <h2 className="text-base md:text-lg font-semibold text-slate-800 mb-4">
-                Здравствуйте, Евгений!
+                Здравствуйте, {profile.first_name || profile.email}!
               </h2>
 
               {/* 6 ta Ustunli Kartalar Grid */}
@@ -143,7 +168,7 @@ export default function ProfilePage() {
                   return (
                     <button
                       key={card.id}
-                      onClick={() => setActiveTab(card.id)}
+                      onClick={() => handleTabClick(card.id)}
                       className={`flex flex-col items-center justify-center p-4 border-r border-b xl:border-b-0 border-gray-100 last:border-r-0 transition-all relative ${
                         isActive
                           ? "bg-[#005bff] text-white"
@@ -188,6 +213,20 @@ export default function ProfilePage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50 text-xs sm:text-sm">
+                      {ordersLoading && (
+                        <tr>
+                          <td colSpan={5} className="py-6 text-center text-gray-400">
+                            Загрузка...
+                          </td>
+                        </tr>
+                      )}
+                      {!ordersLoading && ORDERS.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-6 text-center text-gray-400">
+                            У вас пока нет заказов
+                          </td>
+                        </tr>
+                      )}
                       {ORDERS.map((order, idx) => (
                         <tr
                           key={idx}

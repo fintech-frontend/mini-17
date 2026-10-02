@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import CookieNotification from "@/components/CookieNotification";
+import StoreProvider from "@/lib/store/StoreProvider";
 
 import "./globals.css";
 
@@ -29,12 +30,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Header />
-        <main className="flex-1">
-          {children}
-          <CookieNotification />
-          <Footer />
-        </main>
+        <StoreProvider>
+          <Header />
+          <main className="flex-1">
+            {children}
+            <CookieNotification />
+            <Footer />
+          </main>
+        </StoreProvider>
       </body>
     </html>
   );

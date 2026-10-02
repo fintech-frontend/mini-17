@@ -1,80 +1,70 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image";
 import { Trash2 } from "lucide-react";
+import {
+  useApplyPromoMutation,
+  useGetCartQuery,
+  useRemoveCartItemMutation,
+  useUpdateCartItemMutation,
+} from "@/lib/api/cartApi";
 
-// Dastlabki ma'lumotlar
-const INITIAL_CART = [
-  {
-    id: 1,
-    title: "Перфоратор универсальный Wander X645-46 GF 1450W",
-    article: "XJ89YHGO",
-    price: 7899,
-    oldPrice: 7899,
-    quantity: 1,
-    image:
-      "https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=200&auto=format&fit=crop&q=80",
-  },
-  {
-    id: 2,
-    title: "Перфоратор универсальный Wander X645-46 GF 1450W",
-    article: "XJ89YHGO",
-    price: 10899,
-    oldPrice: 11215,
-    quantity: 2,
-    image:
-      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=200&auto=format&fit=crop&q=80",
-  },
-  {
-    id: 3,
-    title: "Перфоратор универсальный Wander X645-46 GF 1450W",
-    article: "XJ89YHGO",
-    price: 10899,
-    oldPrice: 11215,
-    quantity: 1,
-    image:
-      "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=200&auto=format&fit=crop&q=80",
-  },
-  {
-    id: 4,
-    title: "Перфоратор универсальный Wander X645-46 GF 1450W",
-    article: "XJ89YHGO",
-    price: 10899,
-    oldPrice: 11215,
-    quantity: 2,
-    image:
-      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=200&auto=format&fit=crop&q=80",
-  },
-];
+const PLACEHOLDER_IMAGE =
+  "https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=200&auto=format&fit=crop&q=80";
+const MAX_TIER = 7000;
 
 export default function CartPage() {
-  const [cart, setCart] = useState(INITIAL_CART);
+  const { data, isLoading, isError } = useGetCartQuery();
+  const [updateItem] = useUpdateCartItemMutation();
+  const [removeItem] = useRemoveCartItemMutation();
+  const [applyPromo, { isLoading: isApplying, error: promoError }] =
+    useApplyPromoMutation();
   const [promoCode, setPromoCode] = useState("");
+
+  // API ma'lumotini sahifa formatiga o'tkazamiz
+  const cart = (data?.items ?? []).map((item) => ({
+    id: item.product.id,
+    title: item.product.name,
+    article: item.product.article,
+    price: Number(item.price),
+    oldPrice: item.product.old_price ? Number(item.product.old_price) : null,
+    quantity: item.quantity,
+    image: item.product.main_image ?? PLACEHOLDER_IMAGE,
+  }));
+  const totals = data?.totals;
+  const subtotal = Number(totals?.subtotal ?? 0);
+  const totalSum = Number(totals?.total ?? 0);
+  const progress = Math.min((subtotal / MAX_TIER) * 100, 100);
 
   // Miqdorni o'zgartirish (+ / -)
   const updateQuantity = (id: number, delta: number) => {
-    setCart((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const newQty = item.quantity + delta;
-          return { ...item, quantity: newQty > 0 ? newQty : 1 };
-        }
-        return item;
-      }),
-    );
+    const item = cart.find((i) => i.id === id);
+    if (!item) return;
+    const newQty = item.quantity + delta;
+    if (newQty < 1) return;
+    updateItem({ product_id: id, quantity: newQty });
   };
 
   // Savatdan o'chirish
   const removeFromCart = (id: number) => {
-    setCart((prev) => prev.filter((item) => item.id !== id));
+    removeItem(id);
   };
 
-  // Jami summani hisoblash
-  const totalSum = cart.reduce(
-    (acc, item) => acc + item.price * item.quantity,
-    0,
-  );
+  const handleApplyPromo = () => {
+    if (promoCode.trim()) applyPromo(promoCode.trim());
+  };
+
+  if (isLoading) {
+    return <div className="py-20 text-center text-gray-500">Загрузка...</div>;
+  }
+
+  if (isError) {
+    return (
+      <div className="py-20 text-center text-red-500">
+        Не удалось загрузить корзину
+      </div>
+    );
+  }
 
   return (
     <div className="w-full bg-[#fafbfc] min-h-screen py-4 md:py-8 px-4 sm:px-8 md:px-12 font-sans text-slate-800">
@@ -89,7 +79,9 @@ export default function CartPage() {
           <div className="flex justify-between items-center text-xs font-medium text-slate-700 mb-2">
             <span>
               Ваша скидка от суммы заказа:{" "}
-              <strong className="text-blue-600">0 ₽</strong>
+              <strong className="text-blue-600">
+                {Number(totals?.discount_total ?? 0).toLocaleString()} ₽
+              </strong>
             </span>
 
             <div className="hidden md:flex items-center gap-3 bg-white border border-gray-100 shadow-md rounded-lg px-3 py-1.5 text-[11px]">
@@ -112,14 +104,28 @@ export default function CartPage() {
           </div>
 
           <div className="relative w-full h-2 bg-gray-100 rounded-full my-3 overflow-hidden">
-            <div className="h-full bg-blue-500 w-[18%] transition-all duration-300"></div>
+            <div className="h-full bg-blue-500 transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            ></div>
           </div>
 
           <div className="flex justify-between text-[11px] text-gray-400 font-medium">
-            <span>3 567 ₽</span>
+            <span>{subtotal.toLocaleString()} ₽</span>
             <span>7 000 ₽</span>
           </div>
         </div>
+
+        {cart.length === 0 && (
+          <div className="bg-white border border-gray-100 rounded-lg p-10 mb-6 text-center text-gray-500 shadow-sm">
+            Корзина пуста
+          </div>
+        )}
+
+        {cart.length === 0 && (
+          <div className="bg-white border border-gray-100 rounded-lg p-10 mb-6 text-center text-gray-500 shadow-sm">
+            Корзина пуста
+          </div>
+        )}
 
         {/* --- 1. MOBILE VERSIYA (Faqat telefonda ko'rinadi: md breakpointdan kichik) --- */}
         <div className="block md:hidden bg-white border border-gray-100 rounded-lg p-3 mb-6 shadow-sm">
@@ -283,7 +289,9 @@ export default function CartPage() {
             <div className="space-y-2.5 text-xs text-gray-600">
               <div className="flex justify-between items-center">
                 <span>Скидка по промокоду</span>
-                <span>0 ₽</span>
+                <span>
+                  {Number(totals?.promo_discount ?? 0).toLocaleString()} ₽
+                </span>
               </div>
               <div className="flex justify-between items-center pt-2 text-sm font-bold text-slate-900">
                 <span>Сумма</span>
@@ -299,8 +307,20 @@ export default function CartPage() {
                 placeholder="Промокод"
                 value={promoCode}
                 onChange={(e) => setPromoCode(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleApplyPromo()}
                 className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded focus:outline-none"
               />
+              <button
+                type="button"
+                onClick={handleApplyPromo}
+                disabled={isApplying}
+                className="w-full py-2 text-xs font-semibold border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50"
+              >
+                {data?.promo_code ? `Промокод: ${data.promo_code}` : "Применить"}
+              </button>
+              {promoError && (
+                <p className="text-[11px] text-red-500">Неверный промокод</p>
+              )}
             </div>
 
             <button
