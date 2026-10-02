@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import {
@@ -9,10 +11,30 @@ import {
   Heart,
   ShoppingCart,
 } from "lucide-react";
+import { useFavoritesStore } from "@/components/useFavoritesStore";
+import { useCompareStore } from "@/components/useCompareStore";
+import { useMounted } from "@/lib/useMounted";
+import { useCallbackModal } from "@/components/CallbackModal";
+
+// Ikonka ustidagi qizil sanoq belgisi
+const Badge = ({ count }: { count: number }) =>
+  count > 0 ? (
+    <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-[#e52e2e] text-white text-[10px] font-bold flex items-center justify-center leading-none">
+      {count > 99 ? "99+" : count}
+    </span>
+  ) : null;
 import CatalogMenu from "./CatalogMenu";
 import CartBadge from "./CartBadge";
 
 const Header = () => {
+  const mounted = useMounted();
+  const favoritesCount = useFavoritesStore((s) => s.items.length);
+  const compareCount = useCompareStore((s) => s.items.length);
+  const openCallback = useCallbackModal((s) => s.open);
+
+  const favCount = mounted ? favoritesCount : 0;
+  const cmpCount = mounted ? compareCount : 0;
+
   return (
     <header className="relative w-full bg-white text-[#4A4A4A] text-sm border-b border-gray-100">
       {/* 1. TOP BAR */}
@@ -57,10 +79,10 @@ const Header = () => {
               Вопрос-ответ
             </Link>
             <Link
-              href="/yengiliklar"
+              href="/blog"
               className="hover:text-[#005bff] transition-colors"
             >
-              Новости
+              Блог
             </Link>
             <Link
               href="/aloqa"
@@ -87,7 +109,11 @@ const Header = () => {
             >
               8 800 444 00 65
             </a>
-            <button className="bg-[#f0f5fd] text-[#005bff] text-[10px] sm:text-xs px-2.5 sm:px-4 py-1.5 rounded-md hover:bg-[#e0eafb] transition-colors font-semibold uppercase whitespace-nowrap">
+            <button
+              type="button"
+              onClick={openCallback}
+              className="bg-[#f0f5fd] text-[#005bff] text-[10px] sm:text-xs px-2.5 sm:px-4 py-1.5 rounded-md hover:bg-[#e0eafb] transition-colors font-semibold uppercase whitespace-nowrap"
+            >
               ЗАКАЗАТЬ ЗВОНОК
             </button>
           </div>
@@ -147,7 +173,10 @@ const Header = () => {
               href="/sraveniy"
               className="flex flex-col items-center gap-1 text-gray-700 hover:text-[#005bff]"
             >
-              <BarChart2 size={22} strokeWidth={1.5} className="rotate-90" />
+              <span className="relative">
+                <BarChart2 size={22} strokeWidth={1.5} className="rotate-90" />
+                <Badge count={cmpCount} />
+              </span>
               <span className="text-[11px] text-gray-600 whitespace-nowrap">
                 Сравнение
               </span>
@@ -157,7 +186,10 @@ const Header = () => {
               href="/favorites"
               className="flex flex-col items-center gap-1 text-gray-700 hover:text-[#005bff] relative"
             >
-              <Heart size={22} strokeWidth={1.5} />
+              <span className="relative">
+                <Heart size={22} strokeWidth={1.5} />
+                <Badge count={favCount} />
+              </span>
               <span className="text-[11px] text-gray-600 whitespace-nowrap">
                 Избранное
               </span>
@@ -202,16 +234,18 @@ const Header = () => {
                 <User size={20} strokeWidth={1.5} />
               </Link>
               <Link
-                href="/compare"
-                className="text-gray-700 hover:text-[#005bff]"
+                href="/sraveniy"
+                className="text-gray-700 hover:text-[#005bff] relative"
               >
                 <BarChart2 size={20} strokeWidth={1.5} className="rotate-90" />
+                <Badge count={cmpCount} />
               </Link>
               <Link
                 href="/favorites"
                 className="text-gray-700 hover:text-[#005bff] relative"
               >
                 <Heart size={20} strokeWidth={1.5} />
+                <Badge count={favCount} />
               </Link>
               <Link
                 href="/karzinka"

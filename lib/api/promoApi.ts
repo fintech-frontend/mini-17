@@ -7,6 +7,7 @@ import type {
   ApiProduct,
   ApiPromotion,
   ApiPromotionDetail,
+  ArticleType,
   Paginated,
 } from "@/types/api";
 import type { ProductType } from "@/types/product";
@@ -48,8 +49,11 @@ export const promoApi = baseApi.injectEndpoints({
       query: (slug) => `/promotions/${slug}`,
       providesTags: (_r, _e, slug) => [{ type: "Promotions", id: slug }],
     }),
-    // GET /news/
-    getNews: build.query<Paginated<ApiArticle>, { page?: number; page_size?: number } | void>({
+    // GET /news/?type=&page=&page_size=  (blog sahifasi ham shundan foydalanadi)
+    getNews: build.query<
+      Paginated<ApiArticle>,
+      { page?: number; page_size?: number; type?: ArticleType } | void
+    >({
       query: (params) => ({ url: "/news", params: params ?? undefined }),
       providesTags: ["News"],
     }),

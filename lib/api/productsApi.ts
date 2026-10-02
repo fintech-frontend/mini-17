@@ -37,6 +37,16 @@ export const productsApi = baseApi.injectEndpoints({
       transformResponse: (res: ApiProductDetail) => mapProductDetail(res),
       providesTags: (_r, _e, id) => [{ type: "Products", id }],
     }),
+    // Bir nechta mahsulotning to'liq ma'lumoti (taqqoslash sahifasi uchun)
+    getProductsDetails: build.query<ProductType[], number[]>({
+      async queryFn(ids, _api, _extra, baseQuery) {
+        const results = await Promise.all(ids.map((id) => baseQuery(`/catalog/products/${id}`)));
+        const failed = results.find((r) => r.error);
+        if (failed?.error) return { error: failed.error };
+        return { data: results.map((r) => mapProductDetail(r.data as ApiProductDetail)) };
+      },
+      providesTags: (_r, _e, ids) => ids.map((id) => ({ type: "Products" as const, id })),
+    }),
     // GET /catalog/products/{slug}/related/
     getRelatedProducts: build.query<ProductType[], string>({
       query: (slug) => `/catalog/products/${slug}/related`,
@@ -56,6 +66,7 @@ export const productsApi = baseApi.injectEndpoints({
 export const {
   useGetProductsQuery,
   useGetProductQuery,
+  useGetProductsDetailsQuery,
   useGetRelatedProductsQuery,
   useGetProductRatingQuery,
   useGetProductReviewsQuery,

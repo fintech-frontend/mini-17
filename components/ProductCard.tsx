@@ -1,6 +1,6 @@
 "use client";
 
-import { IoMdHeartEmpty } from "react-icons/io";
+import { IoMdHeart, IoMdHeartEmpty } from "react-icons/io";
 import { FiCheck } from "react-icons/fi";
 import Image from 'next/image';
 import Link from 'next/link';
@@ -9,6 +9,8 @@ import bag from '../public/bag.svg';
 import chiziq from '../public/chiziq.svg';
 import { ProductType } from "@/lib/data";
 import { useCompareStore } from "./useCompareStore";
+import { useFavoritesStore } from "./useFavoritesStore";
+import { useMounted } from "@/lib/useMounted";
 import { useAddToCart } from "@/lib/useAddToCart";
 
 interface ProductCardProps {
@@ -18,6 +20,9 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const { addToCompare, removeFromCompare, isInCompare } = useCompareStore();
   const inCompare = isInCompare(product.id);
+  const { toggleFavorite, isInFavorites } = useFavoritesStore();
+  const mounted = useMounted();
+  const inFavorites = mounted && isInFavorites(product.id);
   const { add: addToCart, isLoading: isAdding } = useAddToCart();
 
   const handleCompareClick = () => {
@@ -101,12 +106,22 @@ export default function ProductCard({ product }: ProductCardProps) {
           )}
 
           <div className="flex gap-1 sm:gap-1.5 shrink-0">
+            {/* Sevimlilar — bosilganda qizil yurakchaga o'zgaradi */}
             <button
               type="button"
-              aria-label="В избранное"
-              className="w-8 h-8 sm:w-8.5 sm:h-8.5 border border-gray-200 rounded-xl hover:bg-gray-50 active:bg-gray-100 text-gray-500 transition-colors flex items-center justify-center flex-shrink-0"
+              onClick={() => toggleFavorite(product)}
+              aria-label={inFavorites ? "Убрать из избранного" : "В избранное"}
+              className={`w-8 h-8 sm:w-8.5 sm:h-8.5 border rounded-xl transition-colors flex items-center justify-center flex-shrink-0 ${
+                inFavorites
+                  ? "border-red-200 bg-red-50 text-red-500"
+                  : "border-gray-200 hover:bg-gray-50 active:bg-gray-100 text-gray-500"
+              }`}
             >
-              <IoMdHeartEmpty className="text-sm sm:text-base" />
+              {inFavorites ? (
+                <IoMdHeart className="text-sm sm:text-base" />
+              ) : (
+                <IoMdHeartEmpty className="text-sm sm:text-base" />
+              )}
             </button>
 
             {/* Taqqoslash — bosilganda galochkaga o'zgaradi */}

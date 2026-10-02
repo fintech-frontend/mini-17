@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useGetNewsQuery } from "@/lib/api/promoApi";
 import { mapArticle } from "@/lib/api/mappers";
+import { FALLBACK_POSTS } from "@/lib/blog";
 
 interface NewsItem {
   id: number;
@@ -14,41 +15,15 @@ interface NewsItem {
   href: string;
 }
 
-// API da yangilik bo'lmasa ko'rsatiladigan zaxira ro'yxat
-const staticNews: NewsItem[] = [
-  {
-    id: 1,
-    title: "Масштабное обновление каталога инструментов",
-    excerpt: "С радостью сообщаем вам о крупном пополнении нашего каталога инструментов.",
-    date: "5 Августа 2023",
-    image: "/images/news1.png",
-    href: "/news/1",
-  },
-  {
-    id: 2,
-    title: "Масштабное обновление каталога инструментов",
-    excerpt: "С радостью сообщаем вам о крупном пополнении нашего каталога инструментов.",
-    date: "5 Августа 2023",
-    image: "/images/news2.png",
-    href: "/news/2",
-  },
-  {
-    id: 3,
-    title: "Масштабное обновление каталога инструментов",
-    excerpt: "С радостью сообщаем вам о крупном пополнении нашего каталога инструментов.",
-    date: "5 Августа 2023",
-    image: "/images/news3.png",
-    href: "/news/3",
-  },
-  {
-    id: 4,
-    title: "Масштабное обновление каталога инструментов",
-    excerpt: "С радостью сообщаем вам о крупном пополнении нашего каталога инструментов.",
-    date: "5 Августа 2023",
-    image: "/images/news4.png",
-    href: "/news/4",
-  },
-];
+// API da yangilik bo'lmasa — blogning zaxira postlari
+const staticNews: NewsItem[] = FALLBACK_POSTS.slice(0, 4).map((p) => ({
+  id: p.id,
+  title: p.title,
+  excerpt: p.excerpt,
+  date: p.date,
+  image: p.image,
+  href: `/blog/${p.slug}`,
+}));
 
 export default function LatestNews() {
   // GET /news/?page_size=4
@@ -62,7 +37,7 @@ export default function LatestNews() {
           Последние новости
         </h2>
         <Link
-          href="/news"
+          href="/blog"
           className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline whitespace-nowrap"
         >
           Больше новостей

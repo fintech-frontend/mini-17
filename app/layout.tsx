@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import CookieNotification from "@/components/CookieNotification";
+import CallbackModal from "@/components/CallbackModal";
 import StoreProvider from "@/lib/store/StoreProvider";
 
 import "./globals.css";
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <main className="flex-1">
             {children}
             <CookieNotification />
+            <CallbackModal />
             <Footer />
           </main>
         </StoreProvider>

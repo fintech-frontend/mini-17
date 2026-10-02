@@ -3,6 +3,8 @@
 import { Check, ChartNoAxesColumn, Heart, Minus, Plus } from 'lucide-react';
 import { ProductType } from '@/types/product';
 import { useCompareStore } from './useCompareStore';
+import { useFavoritesStore } from './useFavoritesStore';
+import { useMounted } from '@/lib/useMounted';
 
 interface ProductBuyBoxProps {
   product: ProductType;
@@ -25,6 +27,15 @@ export default function ProductBuyBox({
 }: ProductBuyBoxProps) {
   const { addToCompare, removeFromCompare, isInCompare } = useCompareStore();
   const inCompare = isInCompare(product.id);
+  const { toggleFavorite, isInFavorites } = useFavoritesStore();
+  const mounted = useMounted();
+  const inFavorites = mounted && isInFavorites(product.id);
+
+  const handleFavoriteClick = () => {
+    toggleFavorite(product);
+    if (!inFavorites) onAddToFavorites();
+  };
+
   const outOfStock = product.inStock === false;
   // Ombordagi qoldiqdan ko'p qo'shib bo'lmaydi
   const maxQuantity = product.stockQuantity && product.stockQuantity > 0 ? product.stockQuantity : Infinity;
@@ -114,13 +125,19 @@ export default function ProductBuyBox({
       <div className="mt-5 flex items-center justify-between text-xs text-gray-700">
         <button
           type="button"
-          onClick={onAddToFavorites}
-          className="flex items-center gap-2 hover:text-blue-600 transition-colors"
+          onClick={handleFavoriteClick}
+          className={`flex items-center gap-2 transition-colors ${
+            inFavorites ? 'text-red-500' : 'hover:text-blue-600'
+          }`}
         >
-          <span className="w-9 h-9 border border-gray-200 rounded-md flex items-center justify-center">
-            <Heart size={16} strokeWidth={1.75} />
+          <span
+            className={`w-9 h-9 border rounded-md flex items-center justify-center ${
+              inFavorites ? 'border-red-200 bg-red-50' : 'border-gray-200'
+            }`}
+          >
+            <Heart size={16} strokeWidth={1.75} fill={inFavorites ? 'currentColor' : 'none'} />
           </span>
-          В избранное
+          {inFavorites ? 'В избранном' : 'В избранное'}
         </button>
         <button
           type="button"
