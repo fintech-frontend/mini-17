@@ -3,7 +3,6 @@
 import React from "react";
 import Link from "next/link";
 import {
-  Menu,
   Search,
   Gift,
   User,
@@ -25,6 +24,7 @@ const Badge = ({ count }: { count: number }) =>
   ) : null;
 import CatalogMenu from "./CatalogMenu";
 import CartBadge from "./CartBadge";
+import MobileMenu from "./MobileMenu";
 
 const Header = () => {
   const mounted = useMounted();
@@ -79,6 +79,12 @@ const Header = () => {
               Вопрос-ответ
             </Link>
             <Link
+              href="/blog?rubric=news"
+              className="hover:text-[#005bff] transition-colors"
+            >
+              Новости
+            </Link>
+            <Link
               href="/blog"
               className="hover:text-[#005bff] transition-colors"
             >
@@ -92,11 +98,8 @@ const Header = () => {
             </Link>
           </nav>
 
-          {/* Telefonda / iPad'da: Menu tugmasi */}
-          <button className="lg:hidden flex items-center gap-1.5 text-gray-800 hover:text-[#005bff] font-medium text-xs">
-            <Menu size={18} />
-            <span>Меню</span>
-          </button>
+          {/* Telefonda / iPad'da: chapdan ochiladigan menyu */}
+          <MobileMenu />
 
           {/* O'ng taraf: Telefon va Vaqt */}
           <div className="flex items-center gap-2 sm:gap-4 ml-auto lg:ml-0">
