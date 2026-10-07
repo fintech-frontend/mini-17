@@ -9,6 +9,7 @@ import "./globals.css";
 
 import Header from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
+import ShopOnly from "@/components/layout/ShopOnly";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,12 +34,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <StoreProvider>
-          <Header />
+          <ShopOnly>
+            <Header />
+          </ShopOnly>
           <main className="flex-1">
             {children}
-            <CookieNotification />
-            <CallbackModal />
-            <Footer />
+            <ShopOnly>
+              <CookieNotification />
+              <CallbackModal />
+              <Footer />
+            </ShopOnly>
           </main>
         </StoreProvider>
         <Toaster position="top-center" />

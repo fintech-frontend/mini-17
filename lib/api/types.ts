@@ -44,6 +44,17 @@ export interface RegisterRequest {
   phone_number?: string;
 }
 
+export interface Address {
+  id: number;
+  company_name?: string;
+  region?: string;
+  city?: string;
+  street?: string;
+  house?: string;
+  phone?: string;
+  is_default?: boolean;
+}
+
 export interface Detail {
   detail: string;
 }

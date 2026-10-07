@@ -100,7 +100,7 @@ const Footer = () => {
                 <Link href="/aloqa" className="hover:text-[#005bff]">
                   Контакты
                 </Link>
-                <Link href="/auth" className="hover:text-[#005bff]">
+                <Link href="/kantak" className="hover:text-[#005bff]">
                   Вход \ Регистрация
                 </Link>
                 <Link href="/promotions" className="hover:text-[#005bff]">
@@ -231,7 +231,7 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/auth" className="hover:text-[#005bff]">
+                <Link href="/kantak" className="hover:text-[#005bff]">
                   Вход \ Регистрация
                 </Link>
               </li>
