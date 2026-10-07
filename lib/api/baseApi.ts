@@ -8,9 +8,9 @@ import {
 import { tokenStorage } from "./tokenStorage";
 import type { TokenPair } from "./types";
 
-// next.config.ts dagi rewrite orqali backendga boradi
+// next.config.ts dagi rewrite orqali backendga boradi 
 const rawBaseQuery = fetchBaseQuery({
-  baseUrl: "/api/v1",
+  baseUrl: "/api/v1", 
   credentials: "include",
   prepareHeaders: (headers) => {
     const access = tokenStorage.getAccess();

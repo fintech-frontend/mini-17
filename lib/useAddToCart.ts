@@ -1,7 +1,7 @@
 "use client";
 
-import toast from "react-hot-toast";
 import { useAddToCartMutation } from "@/lib/api/cartApi";
+import { showAddedToCartToast, showCartErrorToast } from "@/components/CartToast";
 
 // Backend xatosidan o'qiladigan matnni olish: {"quantity": ["..."]} yoki {"detail": "..."}
 export function getApiErrorMessage(error: unknown, fallback: string) {
@@ -15,17 +15,32 @@ export function getApiErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-// POST /cart/items/ — savatga qo'shish va natija haqida toast ko'rsatish
+// Backend'ning inglizcha xabarlarini foydalanuvchiga tushunarli qilish
+function cartErrorText(error: unknown) {
+  const message = getApiErrorMessage(error, "");
+  const stock = message.match(/Only (\d+) unit/i);
+  if (stock) {
+    return Number(stock[1]) === 0
+      ? "Этого товара сейчас нет в наличии."
+      : `На складе осталось только ${stock[1]} шт.`;
+  }
+  if ((error as { status?: unknown })?.status === "FETCH_ERROR") {
+    return "Нет соединения с сервером. Проверьте интернет и попробуйте ещё раз.";
+  }
+  return message || "Попробуйте ещё раз немного позже.";
+}
+
+// POST /cart/items/ — savatga qo'shish va natija haqida bildirishnoma ko'rsatish
 export function useAddToCart() {
   const [addToCart, { isLoading }] = useAddToCartMutation();
 
   const add = async (productId: number, quantity = 1) => {
     try {
-      await addToCart({ product_id: productId, quantity }).unwrap();
-      toast.success(`Товар добавлен в корзину (${quantity} шт.)`);
+      const cart = await addToCart({ product_id: productId, quantity }).unwrap();
+      showAddedToCartToast(cart, productId, quantity);
       return true;
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Не удалось добавить товар в корзину"));
+      showCartErrorToast(cartErrorText(error));
       return false;
     }
   };

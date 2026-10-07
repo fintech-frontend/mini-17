@@ -48,6 +48,22 @@ export interface Detail {
   detail: string;
 }
 
+export interface RegisterResponse {
+  detail: string;
+  email: string;
+}
+
+// Email tasdiqlash va parolni tiklash uchun 6 xonali kod
+export interface EmailCodeRequest {
+  email: string;
+  code: string;
+}
+
+export interface ResetPasswordRequest extends EmailCodeRequest {
+  new_password: string;
+  new_password2: string;
+}
+
 // ---------- Katalog ----------
 export interface Category {
   id: number;
