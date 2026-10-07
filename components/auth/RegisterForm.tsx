@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRegisterMutation } from "@/lib/api/authApi";
+import { PASSWORD_HINT, passwordProblem } from "@/lib/passwordRules";
 import { parseAuthError, type FieldErrors } from "./authErrors";
 import VerifyEmailForm from "./VerifyEmailForm";
 import {
@@ -65,6 +66,10 @@ export default function RegisterForm() {
     if (phone.replace(/\D/g, "").length !== 11) errors.phone_number = "Введите номер телефона полностью.";
     if (!fullName.trim()) errors.first_name = "Заполните это поле.";
     if (!password) errors.password = "Заполните это поле.";
+    else {
+      const problem = passwordProblem(password);
+      if (problem) errors.password = problem;
+    }
     if (password && password2 !== password) errors.password2 = "Пароли не совпадают.";
     setFieldErrors(errors);
     if (Object.keys(errors).length) return;
@@ -141,6 +146,7 @@ export default function RegisterForm() {
           error={!!fieldErrors.password}
           autoComplete="new-password"
         />
+        {!fieldErrors.password && <p className="mt-1.5 text-xs text-gray-400">{PASSWORD_HINT}</p>}
       </Field>
       <Field label="Подтвердите пароль" required error={fieldErrors.password2}>
         <PasswordInput

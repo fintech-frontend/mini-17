@@ -6,7 +6,7 @@ import {
   Search,
   Gift,
   User,
-  BarChart2,
+  ChartNoAxesColumn,
   Heart,
   ShoppingCart,
 } from "lucide-react";
@@ -184,7 +184,7 @@ const Header = () => {
               className="flex flex-col items-center gap-1 text-gray-700 hover:text-[#005bff]"
             >
               <span className="relative">
-                <BarChart2 size={22} strokeWidth={1.5} className="rotate-90" />
+                <ChartNoAxesColumn size={22} strokeWidth={1.5} />
                 <Badge count={cmpCount} />
               </span>
               <span className="text-[11px] text-gray-600 whitespace-nowrap">
@@ -248,7 +248,7 @@ const Header = () => {
                 href="/sraveniy"
                 className="text-gray-700 hover:text-[#005bff] relative"
               >
-                <BarChart2 size={20} strokeWidth={1.5} className="rotate-90" />
+                <ChartNoAxesColumn size={20} strokeWidth={1.5} />
                 <Badge count={cmpCount} />
               </Link>
               <Link
