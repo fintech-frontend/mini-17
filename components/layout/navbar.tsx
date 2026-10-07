@@ -14,6 +14,8 @@ import { useFavoritesStore } from "@/components/useFavoritesStore";
 import { useCompareStore } from "@/components/useCompareStore";
 import { useMounted } from "@/lib/useMounted";
 import { useCallbackModal } from "@/components/CallbackModal";
+import { useGetProfileQuery } from "@/lib/api/authApi";
+import { tokenStorage } from "@/lib/api/tokenStorage";
 
 // Ikonka ustidagi qizil sanoq belgisi
 const Badge = ({ count }: { count: number }) =>
@@ -31,6 +33,11 @@ const Header = () => {
   const favoritesCount = useFavoritesStore((s) => s.items.length);
   const compareCount = useCompareStore((s) => s.items.length);
   const openCallback = useCallbackModal((s) => s.open);
+  // Token bo'lsa profilni olamiz — "Войти" o'rniga foydalanuvchi ismi chiqadi
+  const { data: profile } = useGetProfileQuery(undefined, {
+    skip: !mounted || !tokenStorage.getAccess(),
+  });
+  const accountLabel = profile?.first_name || (profile ? "Кабинет" : "Войти");
 
   const favCount = mounted ? favoritesCount : 0;
   const cmpCount = mounted ? compareCount : 0;
@@ -167,8 +174,8 @@ const Header = () => {
               className="flex flex-col items-center gap-1 text-gray-700 hover:text-[#005bff]"
             >
               <User size={22} strokeWidth={1.5} />
-              <span className="text-[11px] text-gray-600 whitespace-nowrap">
-                Войти
+              <span className="text-[11px] text-gray-600 whitespace-nowrap max-w-20 truncate">
+                {accountLabel}
               </span>
             </Link>
 
@@ -225,13 +232,14 @@ const Header = () => {
 
             <div className="flex items-center gap-3 sm:gap-6">
               <Link
-                href="/promotions"
+                href="/aksiya"
                 className="text-gray-700 hover:text-[#005bff]"
               >
                 <Gift size={20} strokeWidth={1.5} />
               </Link>
               <Link
-                href="/login"
+                href="/kantak"
+                aria-label={accountLabel}
                 className="text-gray-700 hover:text-[#005bff]"
               >
                 <User size={20} strokeWidth={1.5} />

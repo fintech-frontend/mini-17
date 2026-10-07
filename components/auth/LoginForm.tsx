@@ -1,56 +1,126 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
+import Link from "next/link";
+import toast from "react-hot-toast";
 import { useLoginMutation } from "@/lib/api/authApi";
+import { parseAuthError, type FieldErrors } from "./authErrors";
+import VerifyEmailForm from "./VerifyEmailForm";
+import {
+  AuthAside,
+  AuthCard,
+  AuthPage,
+  Checkbox,
+  Field,
+  FormError,
+  PasswordInput,
+  PrimaryButton,
+  inputClass,
+} from "./ui";
 
+// /kantak — "Авторизация" (stroiopttorg.ru/my-account uslubida)
 export default function LoginForm() {
-  const [login, { isLoading, error }] = useLoginMutation();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [generalError, setGeneralError] = useState("");
+  // 403 — akkaunt bor, lekin email tasdiqlanmagan
+  const [needsVerify, setNeedsVerify] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [login, { isLoading }] = useLoginMutation();
+
+  // POST /auth/login/ — muvaffaqiyatli bo'lsa /kantak shaxsiy kabinetni ko'rsatadi
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login(form);
+    setFieldErrors({});
+    setGeneralError("");
+    if (!email.trim() || !password) {
+      setFieldErrors({
+        ...(email.trim() ? {} : { email: "Заполните это поле." }),
+        ...(password ? {} : { password: "Заполните это поле." }),
+      });
+      return;
+    }
+    try {
+      const res = await login({ email: email.trim(), password, remember }).unwrap();
+      toast.success(`Добро пожаловать${res.user?.first_name ? `, ${res.user.first_name}` : ""}!`);
+    } catch (error) {
+      if ((error as { status?: number }).status === 403) {
+        setNeedsVerify(true);
+        return;
+      }
+      const { fields, general } = parseAuthError(error);
+      setFieldErrors(fields);
+      setGeneralError(general);
+    }
   };
 
-  return (
-    <div className="w-full bg-[#f8f9fa] min-h-[60vh] py-16 px-4">
-      <form
-        onSubmit={handleSubmit}
-        className="max-w-sm mx-auto bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4"
-      >
-        <h1 className="text-xl font-extrabold text-slate-800">
-          Вход в личный кабинет
-        </h1>
-
+  const form = needsVerify ? (
+    <VerifyEmailForm
+      email={email.trim()}
+      password={password}
+      remember={remember}
+      initialNotice={`Email ${email.trim()} ещё не подтверждён. Введите код из письма или запросите новый.`}
+      onVerified={(loggedIn) => !loggedIn && setNeedsVerify(false)}
+    />
+  ) : (
+    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+      <Field label="Email" required error={fieldErrors.email}>
         <input
           type="email"
-          required
-          placeholder="Email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#005bff]"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Введите данные для авторизации"
+          className={inputClass(!!fieldErrors.email)}
         />
-        <input
-          type="password"
-          required
-          placeholder="Пароль"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#005bff]"
+      </Field>
+      <Field label="Пароль" required error={fieldErrors.password}>
+        <PasswordInput
+          value={password}
+          onChange={setPassword}
+          error={!!fieldErrors.password}
+          autoComplete="current-password"
         />
+      </Field>
 
-        {error && (
-          <p className="text-xs text-red-500">Неверный email или пароль</p>
-        )}
+      <Link
+        href="/kantak/vosstanovlenie"
+        className="flex items-center justify-center h-13 bg-gray-50 hover:bg-gray-100 text-[#1f6fd8] text-[13px] font-medium rounded-md transition-colors"
+      >
+        Восстановить пароль
+      </Link>
 
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full py-3 bg-[#005bff] hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg disabled:opacity-50"
-        >
-          {isLoading ? "Вход..." : "Войти"}
-        </button>
-      </form>
-    </div>
+      <FormError message={generalError} />
+      <PrimaryButton loading={isLoading}>Авторизоваться</PrimaryButton>
+
+      <div className="flex justify-center">
+        <Checkbox checked={remember} onChange={setRemember}>
+          Запомнить меня
+        </Checkbox>
+      </div>
+    </form>
+  );
+
+  return (
+    <AuthPage crumb="Авторизация" title={needsVerify ? "Подтверждение email" : "Авторизация"}>
+      <AuthCard
+        form={form}
+        aside={
+          <AuthAside title="Еще нет аккаунта?" href="/registraciya" button="Зарегистрироваться">
+            <p>
+              <strong className="font-semibold text-gray-900">Регистрация на сайте</strong> позволяет
+              получить доступ к статусу и истории вашего заказа. Просто заполните поля ниже, и вы
+              получите учетную запись.
+            </p>
+            <p>
+              Мы запрашиваем у вас только информацию, необходимую для того, чтобы сделать процесс
+              покупки более быстрым и легким.
+            </p>
+          </AuthAside>
+        }
+      />
+    </AuthPage>
   );
 }

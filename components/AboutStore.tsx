@@ -11,7 +11,7 @@ const stats = [
 
 export default function AboutStore() {
   return (
-    <section className="w-full rounded-2xl overflow-hidden bg-[#f6faff] my-8 sm:my-10 md:my-12">
+    <section className="w-full rounded-2xl overflow-hidden bg-white my-8 sm:my-10 md:my-12">
       <div className="grid grid-cols-1 lg:grid-cols-2 items-center">
         {/* Chap qism: matn */}
         <div className="px-5 sm:px-8 md:px-10 lg:px-12 py-8 sm:py-10 md:py-12 order-2 lg:order-1">
@@ -64,7 +64,8 @@ export default function AboutStore() {
             alt="Строительные инструменты"
             fill
             sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover"
+            // Rasm foni och-ko'kish (241,244,250) — oq fonga qo'shilib ketishi uchun biroz oqartiramiz
+            className="object-cover brightness-[1.06]"
             priority
           />
         </div>
