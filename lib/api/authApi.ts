@@ -1,6 +1,7 @@
 import { baseApi } from "./baseApi";
 import { tokenStorage } from "./tokenStorage";
 import type {
+  Address,
   Detail,
   EmailCodeRequest,
   LoginRequest,
@@ -47,6 +48,24 @@ export const authApi = baseApi.injectEndpoints({
     resetPassword: build.mutation<Detail, ResetPasswordRequest>({
       query: (body) => ({ url: "/auth/reset-password", method: "POST", body }),
     }),
+    changePassword: build.mutation<
+      unknown,
+      { old_password: string; new_password: string; new_password2: string }
+    >({
+      query: (body) => ({ url: "/user/password/change", method: "POST", body }),
+    }),
+    getAddresses: build.query<Address[], void>({
+      query: () => "/user/addresses",
+      providesTags: ["Addresses"],
+    }),
+    addAddress: build.mutation<Address, Omit<Address, "id">>({
+      query: (body) => ({ url: "/user/addresses", method: "POST", body }),
+      invalidatesTags: ["Addresses"],
+    }),
+    deleteAddress: build.mutation<void, number>({
+      query: (id) => ({ url: `/user/addresses/${id}`, method: "DELETE" }),
+      invalidatesTags: ["Addresses"],
+    }),
     logout: build.mutation<Detail, void>({
       query: () => ({
         url: "/auth/logout",
@@ -86,6 +105,10 @@ export const {
   useForgotPasswordMutation,
   useVerifyResetCodeMutation,
   useResetPasswordMutation,
+  useChangePasswordMutation,
+  useGetAddressesQuery,
+  useAddAddressMutation,
+  useDeleteAddressMutation,
   useLogoutMutation,
   useGetProfileQuery,
   useUpdateProfileMutation,

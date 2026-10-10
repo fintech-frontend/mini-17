@@ -129,6 +129,7 @@ export const CookieNotification: React.FC = () => {
 
       <style jsx global>{`
         @keyframes slideUp {
+        
           from {
             opacity: 0;
             transform: translateY(16px);
