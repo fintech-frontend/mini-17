@@ -2,25 +2,38 @@
 
 import ResourcePage from "@/components/admin/ResourcePage";
 
-type Row = { id: number; question: string; answer: string; sort: number } & Record<string, unknown>;
+interface AdminFaq extends Record<string, unknown> {
+  id: number;
+  question: string;
+  answer: string;
+  sort: number;
+}
 
-export default function FaqPage() {
+export default function FaqAdminPage() {
   return (
-    <ResourcePage<Row>
+    <ResourcePage<AdminFaq>
+      title="FAQ"
+      description="Вопросы и ответы для страницы «Вопрос-ответ»"
       resource="faq"
-      title="Вопрос-ответ"
-      subtitle="Показывается на странице «Вопрос-ответ»"
-      createLabel="Добавить вопрос"
-      defaultOrdering="sort"
+      noun="вопрос"
+      itemName={(f) => f.question}
+      searchPlaceholder="Вопрос"
+      defaultSort={{ key: "sort", dir: "asc" }}
+      defaults={{ question: "", answer: "", sort: "0" }}
       columns={[
-        { key: "sort", label: "№", sortable: true, align: "right" },
-        { key: "question", label: "Вопрос", render: (r) => <span className="font-medium text-gray-900">{r.question}</span> },
-        { key: "answer", label: "Ответ", render: (r) => <span className="line-clamp-2 max-w-lg text-gray-500">{r.answer}</span> },
+        { key: "sort", header: "№", sortKey: "sort", align: "right", render: (f) => f.sort },
+        {
+          key: "question",
+          header: "Вопрос",
+          hideable: false,
+          render: (f) => <span className="font-medium text-gray-900">{f.question}</span>,
+        },
+        { key: "answer", header: "Ответ", render: (f) => <span className="text-gray-500 line-clamp-2 max-w-xl">{f.answer}</span> },
       ]}
       fields={[
-        { name: "question", label: "Вопрос", type: "text", required: true, wide: true },
+        { name: "question", label: "Вопрос", type: "text", required: true },
         { name: "answer", label: "Ответ", type: "textarea", required: true },
-        { name: "sort", label: "Порядок", type: "number" },
+        { name: "sort", label: "Сортировка", type: "number", half: true },
       ]}
     />
   );

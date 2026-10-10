@@ -1,4 +1,4 @@
-// Admin API tiplari (OpenAPI: /api/schema/ → components.schemas.Admin*)
+// Backend /api/v1/admin/* javob tiplari (Swagger: AdminProduct, AdminOrder, ...)
 
 export type OrderStatus =
   | "new"
@@ -11,12 +11,36 @@ export type OrderStatus =
   | "cancelled"
   | "refunded";
 
-export type DeliveryType = "delivery" | "pickup";
 export type PaymentMethod = "card" | "on_delivery" | "invoice";
+export type DeliveryType = "delivery" | "pickup";
 export type StockStatus = "in_stock" | "low_stock" | "out_of_stock" | "on_order";
 export type LeadStatus = "new" | "in_progress" | "done" | "rejected";
 export type LeadType = "callback" | "price_request" | "consultation" | "one_click";
 export type ArticleType = "news" | "article" | "blog";
+
+export interface AdminPage<T> {
+  count: number;
+  pages?: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export interface AdminCategory {
+  id: number;
+  parent: number | null;
+  name: string;
+  slug: string;
+  sort: number;
+  is_active: boolean;
+}
+
+export interface AdminBrand {
+  id: number;
+  name: string;
+  slug: string;
+  logo: string | null;
+}
 
 export interface AdminProduct {
   id: number;
@@ -32,6 +56,23 @@ export interface AdminProduct {
   is_active: boolean;
   is_featured: boolean;
   created_at: string;
+}
+
+export interface AdminProductImage {
+  id: number;
+  product: number;
+  image: string;
+  sort: number;
+  is_main: boolean;
+}
+
+export interface AdminStock {
+  id: number;
+  product: number;
+  product_name: string;
+  quantity: number;
+  status: StockStatus;
+  synced_at: string | null;
 }
 
 export interface AdminOrderItem {
@@ -76,29 +117,16 @@ export interface AdminUser {
   last_login: string | null;
 }
 
-export interface AdminCategory {
+export interface AdminReview {
   id: number;
-  parent: number | null;
-  name: string;
-  slug: string;
-  sort: number;
-  is_active: boolean;
-}
-
-export interface AdminBrand {
-  id: number;
-  name: string;
-  slug: string;
-  logo: string | null;
-}
-
-export interface AdminStock {
-  id: number;
-  product: number;
-  product_name: string;
-  quantity: number;
-  status: StockStatus;
-  synced_at: string | null;
+  user: string | null;
+  product: number | null;
+  author_name: string;
+  rating: number;
+  comment: string;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AdminLead {
@@ -112,29 +140,14 @@ export interface AdminLead {
   created_at: string;
 }
 
-export interface Paginated<T> {
-  count: number;
-  pages: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
+export interface OrderPayment {
+  id: number;
+  order: number;
+  order_number: string;
+  provider: string;
+  provider_id: string;
+  payment_type: string;
+  status: "pending" | "succeeded" | "cancelled" | "failed" | "refunded";
+  amount: string;
+  created_at: string;
 }
-
-// Admin API resurslari: /api/v1/admin/<resource>/
-export type AdminResource =
-  | "products"
-  | "product-images"
-  | "categories"
-  | "brands"
-  | "stock"
-  | "orders"
-  | "users"
-  | "reviews"
-  | "leads"
-  | "articles"
-  | "promotions"
-  | "banners"
-  | "faq"
-  | "pages"
-  | "promo-codes"
-  | "discount-tiers";

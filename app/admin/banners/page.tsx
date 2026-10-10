@@ -1,38 +1,53 @@
 "use client";
 
+import Image from "next/image";
 import ResourcePage from "@/components/admin/ResourcePage";
+import { mediaUrl } from "@/lib/admin/labels";
 
-type Row = { id: number; title: string; image: string; link: string; sort: number } & Record<string, unknown>;
+interface AdminBanner extends Record<string, unknown> {
+  id: number;
+  title: string;
+  image: string;
+  link: string;
+  sort: number;
+}
 
 export default function BannersPage() {
   return (
-    <ResourcePage<Row>
-      resource="banners"
+    <ResourcePage<AdminBanner>
       title="Баннеры"
-      subtitle="Слайдер на главной странице и баннеры в боковых колонках"
-      createLabel="Добавить баннер"
-      defaultOrdering="sort"
+      description="Слайдер на главной странице. Порядок — по полю «Сортировка»."
+      resource="banners"
+      noun="баннер"
+      itemName={(b) => b.title || `Баннер #${b.id}`}
+      searchPlaceholder="Заголовок"
+      defaultSort={{ key: "sort", dir: "asc" }}
+      defaults={{ title: "", link: "", sort: "0" }}
       columns={[
         {
           key: "image",
-          label: "Изображение",
-          render: (r) =>
-            r.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={r.image} alt={r.title} className="h-12 w-24 rounded-md object-cover ring-1 ring-gray-200" />
-            ) : (
-              "—"
-            ),
+          header: "Изображение",
+          hideable: false,
+          render: (b) => (
+            <span className="relative block w-40 h-16 rounded bg-gray-50 overflow-hidden">
+              {b.image && <Image src={mediaUrl(b.image)} alt="" fill sizes="160px" className="object-cover" />}
+            </span>
+          ),
         },
-        { key: "title", label: "Заголовок", render: (r) => <span className="font-medium text-gray-900">{r.title}</span> },
-        { key: "link", label: "Ссылка", render: (r) => <code className="text-xs text-gray-500">{r.link || "—"}</code> },
-        { key: "sort", label: "Порядок", sortable: true, align: "right" },
+        {
+          key: "title",
+          header: "Заголовок",
+          sortKey: "title",
+          render: (b) => <span className="font-medium text-gray-900">{b.title || "—"}</span>,
+        },
+        { key: "link", header: "Ссылка", render: (b) => <span className="font-mono text-xs text-gray-500">{b.link || "—"}</span> },
+        { key: "sort", header: "Сортировка", sortKey: "sort", align: "right", render: (b) => b.sort },
       ]}
       fields={[
-        { name: "title", label: "Заголовок", type: "text", required: true },
-        { name: "link", label: "Ссылка", type: "text", placeholder: "/catalog" },
-        { name: "sort", label: "Порядок", type: "number" },
-        { name: "image", label: "Изображение", type: "image", required: true },
+        { name: "image", label: "Изображение", type: "image", required: true, hint: "Рекомендуемый размер 1440×500" },
+        { name: "title", label: "Заголовок", type: "text", placeholder: "Электроинструмент для любых нужд" },
+        { name: "link", label: "Ссылка", type: "text", placeholder: "/catalog", half: true },
+        { name: "sort", label: "Сортировка", type: "number", half: true },
       ]}
     />
   );

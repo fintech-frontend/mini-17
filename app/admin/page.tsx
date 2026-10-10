@@ -2,395 +2,365 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowDownRight, ArrowUpRight, Package, ShoppingCart, TrendingUp, Users, Wallet } from "lucide-react";
-import { listMeta, listRows, useAdminListQuery } from "@/lib/admin/adminApi";
-import { dateTime, money, ORDER_STATUS, PAYMENT_METHOD } from "@/lib/admin/format";
-import type { AdminOrder, AdminStock } from "@/lib/admin/types";
-import { Badge, Card, EmptyState, ErrorState, PageHeader, Select, Skeleton } from "@/components/admin/ui";
+import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+import { useAdminList } from "@/lib/admin/adminApi";
+import type {
+  AdminCategory,
+  AdminOrder,
+  AdminProduct,
+  AdminStock,
+  AdminUser,
+  PaymentMethod,
+} from "@/lib/admin/types";
+import { ORDER_STATUS, PAYMENT_METHOD, STOCK_STATUS, dateTime, money, num } from "@/lib/admin/labels";
+import { previousRange, useAdminRange } from "@/components/admin/AdminContext";
+import { BarList, Donut, LineChart } from "@/components/admin/charts";
+import { Badge, Card, EmptyState, ErrorState, PageHeader, Skeleton } from "@/components/admin/ui";
 
-const DAY = 86_400_000;
-const FETCH_LIMIT = 200;
-// Daromadga hisoblanmaydigan buyurtmalar
-const EXCLUDED = new Set(["cancelled", "refunded"]);
-
-const PERIODS = [
-  { days: 7, label: "7 дней" },
-  { days: 30, label: "30 дней" },
-  { days: 90, label: "90 дней" },
-];
-
-const dayKey = (d: Date) => d.toISOString().slice(0, 10);
-
-function summarize(orders: AdminOrder[]) {
-  const valid = orders.filter((o) => !EXCLUDED.has(o.status));
-  const revenue = valid.reduce((s, o) => s + Number(o.total), 0);
-  const items = valid.reduce((s, o) => s + o.items.reduce((n, i) => n + i.quantity, 0), 0);
-  return {
-    revenue,
-    count: orders.length,
-    avg: valid.length ? revenue / valid.length : 0,
-    items,
-  };
-}
-
-function Delta({ current, previous }: { current: number; previous: number }) {
-  if (!previous) return <span className="text-xs text-gray-400">нет данных за прошлый период</span>;
-  const pct = ((current - previous) / previous) * 100;
-  const up = pct >= 0;
-  const Icon = up ? ArrowUpRight : ArrowDownRight;
-  return (
-    <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${up ? "text-emerald-600" : "text-[#EE0906]"}`}>
-      <Icon className="h-3.5 w-3.5" />
-      {Math.abs(pct).toFixed(1)}%
-      <span className="ml-1 font-normal text-gray-400">к прошлому периоду</span>
-    </span>
-  );
-}
+const BIG = { page_size: 500 };
+// Tushumga bekor qilingan va qaytarilgan buyurtmalar kirmaydi
+const COUNTED = (o: AdminOrder) => o.status !== "cancelled" && o.status !== "refunded";
+const inRange = (iso: string, from: Date, to: Date) => {
+  const t = new Date(iso).getTime();
+  return t >= from.getTime() && t <= to.getTime();
+};
 
 function Kpi({
   label,
   value,
-  icon: Icon,
-  children,
+  current,
+  previous,
+  loading,
 }: {
   label: string;
   value: string;
-  icon: React.ElementType;
-  children?: React.ReactNode;
+  current: number;
+  previous: number;
+  loading: boolean;
 }) {
+  const change = previous ? ((current - previous) / previous) * 100 : current ? 100 : 0;
+  const Icon = change > 0.5 ? ArrowUpRight : change < -0.5 ? ArrowDownRight : Minus;
+  const color = change > 0.5 ? "text-emerald-600" : change < -0.5 ? "text-[#EE0906]" : "text-gray-500";
   return (
-    <Card>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-medium text-gray-500">{label}</p>
-          <p className="mt-1.5 text-2xl font-bold tabular-nums text-gray-900">{value}</p>
-        </div>
-        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-[#012F91]">
-          <Icon className="h-5 w-5" />
-        </span>
-      </div>
-      <div className="mt-3">{children}</div>
-    </Card>
-  );
-}
-
-// Kunlar bo'yicha daromad — chiziqli grafik (SVG)
-function LineChart({ points }: { points: { label: string; value: number }[] }) {
-  const W = 640;
-  const H = 220;
-  const pad = { l: 8, r: 8, t: 12, b: 24 };
-  const max = Math.max(...points.map((p) => p.value), 1);
-  const x = (i: number) => pad.l + (i * (W - pad.l - pad.r)) / Math.max(points.length - 1, 1);
-  const y = (v: number) => pad.t + (1 - v / max) * (H - pad.t - pad.b);
-  const path = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
-  const area = `${path} L${x(points.length - 1)},${H - pad.b} L${x(0)},${H - pad.b} Z`;
-  const step = Math.ceil(points.length / 6);
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-56 w-full" role="img" aria-label="Выручка по дням">
-      {[0, 0.5, 1].map((t) => (
-        <line key={t} x1={pad.l} x2={W - pad.r} y1={y(max * t)} y2={y(max * t)} stroke="#E5E7EB" strokeDasharray="3 3" />
-      ))}
-      <path d={area} fill="#012F91" opacity="0.08" />
-      <path d={path} fill="none" stroke="#012F91" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      {points.map((p, i) => (
-        <g key={p.label}>
-          <circle cx={x(i)} cy={y(p.value)} r="3" fill="#012F91">
-            <title>{`${p.label}: ${money(p.value)}`}</title>
-          </circle>
-          {i % step === 0 && (
-            <text x={x(i)} y={H - 6} textAnchor="middle" fontSize="10" fill="#6B7280">
-              {p.label.slice(5).split("-").reverse().join(".")}
-            </text>
-          )}
-        </g>
-      ))}
-    </svg>
-  );
-}
-
-const DONUT_COLORS = ["#012F91", "#EE0906", "#F59E0B", "#10B981", "#6B7280"];
-
-function Donut({ parts }: { parts: { label: string; value: number }[] }) {
-  const total = parts.reduce((s, p) => s + p.value, 0);
-  const R = 52;
-  const C = 2 * Math.PI * R;
-  // Har bir bo'lakning boshlanish joyi (render paytida o'zgaruvchini o'zgartirmaymiz)
-  const starts = parts.map((_, i) => parts.slice(0, i).reduce((s, p) => s + (p.value / (total || 1)) * C, 0));
-
-  if (!total) return <EmptyState title="Нет данных" />;
-  return (
-    <div className="flex flex-col items-center gap-5 sm:flex-row">
-      <svg viewBox="0 0 140 140" className="h-36 w-36 shrink-0 -rotate-90" role="img" aria-label="Способы оплаты">
-        {parts.map((p, i) => {
-          const len = (p.value / total) * C;
-          return (
-            <circle
-              key={p.label}
-              cx="70"
-              cy="70"
-              r={R}
-              fill="none"
-              stroke={DONUT_COLORS[i % DONUT_COLORS.length]}
-              strokeWidth="20"
-              strokeDasharray={`${len} ${C - len}`}
-              strokeDashoffset={-starts[i]}
-            />
-          );
-        })}
-      </svg>
-      <ul className="w-full space-y-2 text-sm">
-        {parts.map((p, i) => (
-          <li key={p.label} className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-gray-600">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-              {p.label}
-            </span>
-            <span className="font-semibold tabular-nums">{Math.round((p.value / total) * 100)}%</span>
-          </li>
-        ))}
-      </ul>
+    <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(16,24,40,0.06)] p-5">
+      <p className="text-[13px] text-gray-500">{label}</p>
+      {loading ? (
+        <Skeleton className="h-8 w-32 mt-2" />
+      ) : (
+        <p className="text-2xl font-bold text-gray-900 mt-1.5 tabular-nums">{value}</p>
+      )}
+      <p className={`flex items-center gap-1 text-xs mt-2 ${color}`}>
+        <Icon size={14} />
+        <span className="tabular-nums font-medium">{Math.abs(change).toFixed(1)}%</span>
+        <span className="text-gray-400">к прошлому периоду</span>
+      </p>
     </div>
   );
 }
 
-function Bars({ rows }: { rows: { label: string; value: number }[] }) {
-  const max = Math.max(...rows.map((r) => r.value), 1);
-  if (!rows.length) return <EmptyState title="Нет данных" />;
-  return (
-    <ul className="space-y-3">
-      {rows.map((r) => (
-        <li key={r.label}>
-          <div className="mb-1 flex justify-between text-xs">
-            <span className="text-gray-600">{r.label}</span>
-            <span className="font-semibold tabular-nums text-gray-900">{r.value}</span>
-          </div>
-          <div className="h-2 rounded-full bg-gray-100">
-            <div className="h-2 rounded-full bg-[#012F91]" style={{ width: `${(r.value / max) * 100}%` }} />
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
+type Granularity = "day" | "week" | "month";
+
+function bucketKey(d: Date, g: Granularity) {
+  if (g === "month") return `${d.getFullYear()}-${d.getMonth()}`;
+  if (g === "week") {
+    const monday = new Date(d);
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    return monday.toDateString();
+  }
+  return d.toDateString();
 }
 
 export default function DashboardPage() {
-  const [days, setDays] = useState(30);
-  // "Hozir" vaqti sahifa ochilganda bir marta olinadi (render paytida Date.now() chaqirilmaydi)
-  const [now] = useState(() => Date.now());
+  const { range } = useAdminRange();
+  const prev = previousRange(range);
+  const days = Math.round((range.to.getTime() - range.from.getTime()) / 86_400_000) + 1;
+  const [granularity, setGranularity] = useState<Granularity>(days > 120 ? "month" : days > 31 ? "week" : "day");
 
-  const { data, isLoading, error, refetch } = useAdminListQuery({
-    resource: "orders",
-    params: { ordering: "-created_at", page_size: FETCH_LIMIT },
-  });
-  const { data: users } = useAdminListQuery({ resource: "users", params: { page_size: 1, is_staff: "false" } });
-  const { data: lowStock } = useAdminListQuery({ resource: "stock", params: { status: "low_stock", page_size: 5 } });
-  const { data: outStock } = useAdminListQuery({ resource: "stock", params: { status: "out_of_stock", page_size: 5 } });
+  const orders = useAdminList<AdminOrder>("orders", { ...BIG, ordering: "-created_at" });
+  const users = useAdminList<AdminUser>("users", { ...BIG, ordering: "-date_joined" });
+  const products = useAdminList<AdminProduct>("products", BIG);
+  const categories = useAdminList<AdminCategory>("categories", BIG);
+  const lowStock = useAdminList<AdminStock>("stock", { status: "low_stock", page_size: 6 });
+  const outOfStock = useAdminList<AdminStock>("stock", { status: "out_of_stock", page_size: 6 });
 
-  const all = useMemo(() => listRows<AdminOrder>(data), [data]);
-  const { count: totalOrders } = listMeta(data);
+  const loading = orders.isLoading;
+  const all = useMemo(() => orders.data?.results ?? [], [orders.data]);
 
   const stats = useMemo(() => {
-    const inRange = (o: AdminOrder, from: number, to: number) => {
-      const t = new Date(o.created_at).getTime();
-      return t >= from && t < to;
+    const calc = (from: Date, to: Date) => {
+      const list = all.filter((o) => inRange(o.created_at, from, to) && COUNTED(o));
+      const revenue = list.reduce((s, o) => s + Number(o.total), 0);
+      const paid = list.filter((o) => o.paid_at).reduce((s, o) => s + Number(o.total), 0);
+      const items = list.reduce((s, o) => s + o.items.reduce((a, i) => a + i.quantity, 0), 0);
+      const customers = (users.data?.results ?? []).filter((u) => inRange(u.date_joined, from, to)).length;
+      return { list, revenue, paid, count: list.length, avg: list.length ? revenue / list.length : 0, items, customers };
     };
-    const current = all.filter((o) => inRange(o, now - days * DAY, now + DAY));
-    const previous = all.filter((o) => inRange(o, now - 2 * days * DAY, now - days * DAY));
+    return { cur: calc(range.from, range.to), prev: calc(prev.from, prev.to) };
+  }, [all, users.data, range, prev.from, prev.to]);
 
-    // Kunlar bo'yicha daromad
-    const byDay = new Map<string, number>();
-    for (let i = days - 1; i >= 0; i--) byDay.set(dayKey(new Date(now - i * DAY)), 0);
-    current
-      .filter((o) => !EXCLUDED.has(o.status))
-      .forEach((o) => {
-        const k = dayKey(new Date(o.created_at));
-        byDay.set(k, (byDay.get(k) ?? 0) + Number(o.total));
-      });
+  // Tushum grafigi: tanlangan davrdagi har bir kun/hafta/oy
+  const series = useMemo(() => {
+    const buckets = new Map<string, { label: string; value: number }>();
+    const cursor = new Date(range.from);
+    while (cursor <= range.to) {
+      const key = bucketKey(cursor, granularity);
+      if (!buckets.has(key)) {
+        const label =
+          granularity === "month"
+            ? cursor.toLocaleDateString("ru-RU", { month: "short", year: "2-digit" })
+            : cursor.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+        buckets.set(key, { label, value: 0 });
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    for (const o of stats.cur.list) {
+      const b = buckets.get(bucketKey(new Date(o.created_at), granularity));
+      if (b) b.value += Number(o.total);
+    }
+    return [...buckets.values()];
+  }, [stats.cur.list, range, granularity]);
 
-    const methods = new Map<string, number>();
-    current.forEach((o) => {
-      const label = PAYMENT_METHOD[o.payment_method] ?? o.payment_method;
-      methods.set(label, (methods.get(label) ?? 0) + 1);
-    });
-
-    const statuses = new Map<string, number>();
-    current.forEach((o) => {
-      const label = ORDER_STATUS[o.status].label;
-      statuses.set(label, (statuses.get(label) ?? 0) + 1);
-    });
-
-    // Eng ko'p sotilgan mahsulotlar
-    const products = new Map<string, { qty: number; sum: number }>();
-    current
-      .filter((o) => !EXCLUDED.has(o.status))
-      .forEach((o) =>
-        o.items.forEach((i) => {
-          const p = products.get(i.name_snapshot) ?? { qty: 0, sum: 0 };
-          products.set(i.name_snapshot, { qty: p.qty + i.quantity, sum: p.sum + Number(i.price) * i.quantity });
-        }),
-      );
-
-    return {
-      cur: summarize(current),
-      prev: summarize(previous),
-      line: Array.from(byDay, ([label, value]) => ({ label, value })),
-      methods: Array.from(methods, ([label, value]) => ({ label, value })),
-      statuses: Array.from(statuses, ([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value),
-      top: Array.from(products, ([name, v]) => ({ name, ...v })).sort((a, b) => b.qty - a.qty).slice(0, 5),
+  // Kategoriyalar bo'yicha sotuv (yuqori darajadagi kategoriya)
+  const byCategory = useMemo(() => {
+    const cats = new Map((categories.data?.results ?? []).map((c) => [c.id, c]));
+    const root = (id: number | undefined) => {
+      let c = id !== undefined ? cats.get(id) : undefined;
+      while (c?.parent && cats.get(c.parent)) c = cats.get(c.parent);
+      return c?.name ?? "Без категории";
     };
-  }, [all, days, now]);
+    const productCat = new Map((products.data?.results ?? []).map((p) => [p.id, p.category]));
+    const totals = new Map<string, number>();
+    for (const o of stats.cur.list)
+      for (const i of o.items) {
+        const name = root(i.product ? productCat.get(i.product) : undefined);
+        totals.set(name, (totals.get(name) ?? 0) + Number(i.price) * i.quantity);
+      }
+    return [...totals].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value).slice(0, 8);
+  }, [stats.cur.list, categories.data, products.data]);
 
-  const stockAlerts = [...listRows<AdminStock>(outStock), ...listRows<AdminStock>(lowStock)].slice(0, 6);
+  const byPayment = useMemo(() => {
+    const totals: Record<PaymentMethod, number> = { card: 0, on_delivery: 0, invoice: 0 };
+    for (const o of stats.cur.list) totals[o.payment_method] += Number(o.total);
+    return (Object.keys(totals) as PaymentMethod[]).map((k) => ({ label: PAYMENT_METHOD[k], value: totals[k] }));
+  }, [stats.cur.list]);
+
+  const topProducts = useMemo(() => {
+    const map = new Map<string, { name: string; article: string; qty: number; revenue: number; id: number | null }>();
+    for (const o of stats.cur.list)
+      for (const i of o.items) {
+        const key = String(i.product ?? i.article_snapshot);
+        const row = map.get(key) ?? { name: i.name_snapshot, article: i.article_snapshot, qty: 0, revenue: 0, id: i.product };
+        row.qty += i.quantity;
+        row.revenue += Number(i.price) * i.quantity;
+        map.set(key, row);
+      }
+    return [...map.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+  }, [stats.cur.list]);
+
+  const awaitingPayment = all.filter((o) => o.status === "awaiting_payment").slice(0, 5);
+  const stockAlerts = [...(outOfStock.data?.results ?? []), ...(lowStock.data?.results ?? [])].slice(0, 6);
+  const { cur, prev: p } = stats;
+
+  if (orders.error) {
+    return (
+      <>
+        <PageHeader title="Дашборд" />
+        <Card>
+          <ErrorState message="Не удалось получить заказы с сервера." onRetry={orders.refetch} />
+        </Card>
+      </>
+    );
+  }
 
   return (
     <>
       <PageHeader
         title="Дашборд"
-        subtitle="Показатели магазина по заказам"
-        actions={
-          <Select aria-label="Период" value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-auto">
-            {PERIODS.map((p) => (
-              <option key={p.days} value={p.days}>
-                За {p.label}
-              </option>
-            ))}
-          </Select>
-        }
+        description={`${range.from.toLocaleDateString("ru-RU")} — ${range.to.toLocaleDateString("ru-RU")} · сравнение с предыдущим периодом такой же длины`}
       />
 
-      {error ? (
-        <Card>
-          <ErrorState text="Не удалось получить заказы. Проверьте, что у вашей учётной записи есть права сотрудника." onRetry={refetch} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4 mb-6">
+        <Kpi label="Выручка" value={money(cur.revenue)} current={cur.revenue} previous={p.revenue} loading={loading} />
+        <Kpi label="Оплачено" value={money(cur.paid)} current={cur.paid} previous={p.paid} loading={loading} />
+        <Kpi label="Заказы" value={num(cur.count)} current={cur.count} previous={p.count} loading={loading} />
+        <Kpi label="Средний чек" value={money(cur.avg)} current={cur.avg} previous={p.avg} loading={loading} />
+        <Kpi label="Продано товаров" value={num(cur.items)} current={cur.items} previous={p.items} loading={loading} />
+        <Kpi
+          label="Новые клиенты"
+          value={num(cur.customers)}
+          current={cur.customers}
+          previous={p.customers}
+          loading={users.isLoading}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+        <Card
+          title="Выручка"
+          className="xl:col-span-2"
+          actions={
+            <div className="flex bg-gray-100 rounded-lg p-0.5 text-xs">
+              {(["day", "week", "month"] as Granularity[]).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setGranularity(g)}
+                  className={`px-2.5 h-7 rounded-md ${granularity === g ? "bg-white shadow-sm text-gray-900" : "text-gray-500"}`}
+                >
+                  {{ day: "Дни", week: "Недели", month: "Месяцы" }[g]}
+                </button>
+              ))}
+            </div>
+          }
+        >
+          {loading ? <Skeleton className="h-64 w-full" /> : <LineChart points={series} format={money} />}
         </Card>
-      ) : (
-        <>
-          {totalOrders > FETCH_LIMIT && (
-            <p className="mb-4 rounded-lg bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
-              Показатели рассчитаны по последним {FETCH_LIMIT} заказам из {totalOrders}.
-            </p>
+
+        <Card title="Способы оплаты">
+          {loading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : cur.revenue === 0 ? (
+            <EmptyState title="Нет оплат за период" />
+          ) : (
+            <Donut items={byPayment} format={money} centerLabel="всего" />
           )}
+        </Card>
+      </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {isLoading ? (
-              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32" />)
-            ) : (
-              <>
-                <Kpi label="Выручка" value={money(stats.cur.revenue)} icon={Wallet}>
-                  <Delta current={stats.cur.revenue} previous={stats.prev.revenue} />
-                </Kpi>
-                <Kpi label="Заказов" value={String(stats.cur.count)} icon={ShoppingCart}>
-                  <Delta current={stats.cur.count} previous={stats.prev.count} />
-                </Kpi>
-                <Kpi label="Средний чек" value={money(stats.cur.avg)} icon={TrendingUp}>
-                  <Delta current={stats.cur.avg} previous={stats.prev.avg} />
-                </Kpi>
-                <Kpi label="Продано товаров" value={String(stats.cur.items)} icon={Package}>
-                  <Delta current={stats.cur.items} previous={stats.prev.items} />
-                </Kpi>
-              </>
-            )}
-          </div>
-          <p className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-            <Users className="h-3.5 w-3.5" />
-            Всего покупателей: {listMeta(users).count}. Прибыль не показываем: в данных магазина нет себестоимости товаров.
-          </p>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+        <Card title="Продажи по категориям">
+          {loading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : byCategory.length === 0 ? (
+            <EmptyState title="Нет продаж за период" />
+          ) : (
+            <BarList items={byCategory} format={money} />
+          )}
+        </Card>
 
-          <div className="mt-6 grid gap-6 xl:grid-cols-3">
-            <Card title="Выручка по дням" className="xl:col-span-2">
-              {isLoading ? <Skeleton className="h-56" /> : <LineChart points={stats.line} />}
-            </Card>
-            <Card title="Способы оплаты">
-              {isLoading ? <Skeleton className="h-40" /> : <Donut parts={stats.methods} />}
-            </Card>
-          </div>
+        <Card title="Топ товаров" bodyClassName="p-0" actions={<Link href="/admin/products" className="text-sm text-[#012F91] hover:underline">Все товары</Link>}>
+          {topProducts.length === 0 ? (
+            <EmptyState title="Нет продаж за период" />
+          ) : (
+            <table className="w-full text-sm tabular-nums">
+              <thead className="text-xs text-gray-500 bg-gray-50">
+                <tr>
+                  <th className="text-left font-medium px-5 py-2.5">Товар</th>
+                  <th className="text-right font-medium px-5 py-2.5">Кол-во</th>
+                  <th className="text-right font-medium px-5 py-2.5">Выручка</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {topProducts.map((t) => (
+                  <tr key={`${t.id}-${t.article}`}>
+                    <td className="px-5 py-3">
+                      {t.id ? (
+                        <Link href={`/admin/products/${t.id}`} className="text-gray-900 hover:text-[#012F91] line-clamp-1">
+                          {t.name}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-900 line-clamp-1">{t.name}</span>
+                      )}
+                      <span className="block text-xs text-gray-400">{t.article}</span>
+                    </td>
+                    <td className="px-5 py-3 text-right">{num(t.qty)}</td>
+                    <td className="px-5 py-3 text-right font-medium">{money(t.revenue)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      </div>
 
-          <div className="mt-6 grid gap-6 xl:grid-cols-3">
-            <Card title="Заказы по статусам">{isLoading ? <Skeleton className="h-40" /> : <Bars rows={stats.statuses} />}</Card>
-
-            <Card title="Самые продаваемые товары" padded={false}>
-              {stats.top.length === 0 ? (
-                <EmptyState title="Нет продаж за период" />
-              ) : (
-                <ul className="divide-y divide-gray-100">
-                  {stats.top.map((p) => (
-                    <li key={p.name} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
-                      <span className="line-clamp-2 text-gray-900">{p.name}</span>
-                      <span className="shrink-0 text-right tabular-nums">
-                        <span className="block font-semibold">{p.qty} шт.</span>
-                        <span className="text-xs text-gray-400">{money(p.sum)}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-
-            <Card
-              title="Заканчиваются на складе"
-              padded={false}
-              action={<Link href="/admin/stock" className="text-xs font-medium text-[#012F91] hover:underline">Склад →</Link>}
-            >
-              {stockAlerts.length === 0 ? (
-                <EmptyState title="Всё в порядке" text="Товаров с низким остатком нет." />
-              ) : (
-                <ul className="divide-y divide-gray-100">
-                  {stockAlerts.map((s) => (
-                    <li key={s.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
-                      <Link href={`/admin/products/${s.product}`} className="line-clamp-1 text-gray-900 hover:text-[#012F91]">
-                        {s.product_name}
-                      </Link>
-                      <Badge tone={s.status === "out_of_stock" ? "red" : "yellow"}>{s.quantity} шт.</Badge>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          </div>
-
-          <Card
-            className="mt-6"
-            title="Последние заказы"
-            padded={false}
-            action={<Link href="/admin/orders" className="text-xs font-medium text-[#012F91] hover:underline">Все заказы →</Link>}
-          >
-            {all.length === 0 && !isLoading ? (
-              <EmptyState title="Заказов пока нет" text="Они появятся здесь, когда покупатели начнут оформлять заказы на сайте." />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] text-sm">
-                  <thead className="bg-gray-50 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                    <tr>
-                      <th className="px-5 py-3">Заказ</th>
-                      <th className="px-5 py-3">Дата</th>
-                      <th className="px-5 py-3">Клиент</th>
-                      <th className="px-5 py-3 text-right">Сумма</th>
-                      <th className="px-5 py-3">Статус</th>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <Card
+          title="Последние заказы"
+          className="xl:col-span-2"
+          bodyClassName="p-0"
+          actions={<Link href="/admin/orders" className="text-sm text-[#012F91] hover:underline">Все заказы</Link>}
+        >
+          {loading ? (
+            <div className="p-5 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-5 w-full" />
+              ))}
+            </div>
+          ) : all.length === 0 ? (
+            <EmptyState title="Заказов пока нет" text="Новые заказы с сайта появятся здесь." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm tabular-nums">
+                <thead className="text-xs text-gray-500 bg-gray-50">
+                  <tr>
+                    <th className="text-left font-medium px-5 py-2.5">Заказ</th>
+                    <th className="text-left font-medium px-5 py-2.5">Клиент</th>
+                    <th className="text-left font-medium px-5 py-2.5">Статус</th>
+                    <th className="text-right font-medium px-5 py-2.5">Сумма</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {all.slice(0, 6).map((o) => (
+                    <tr key={o.id} className="hover:bg-gray-50">
+                      <td className="px-5 py-3">
+                        <Link href={`/admin/orders/${o.id}`} className="font-medium text-[#012F91] hover:underline">
+                          №{o.number}
+                        </Link>
+                        <span className="block text-xs text-gray-400">{dateTime(o.created_at)}</span>
+                      </td>
+                      <td className="px-5 py-3 text-gray-700 max-w-48 truncate">{o.customer_email}</td>
+                      <td className="px-5 py-3">
+                        <Badge tone={ORDER_STATUS[o.status].tone}>{ORDER_STATUS[o.status].label}</Badge>
+                      </td>
+                      <td className="px-5 py-3 text-right font-medium">{money(o.total)}</td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {all.slice(0, 6).map((o) => (
-                      <tr key={o.id} className="hover:bg-gray-50/80">
-                        <td className="px-5 py-3">
-                          <Link href={`/admin/orders/${o.id}`} className="font-semibold text-[#012F91] hover:underline">
-                            #{o.number}
-                          </Link>
-                        </td>
-                        <td className="px-5 py-3 text-gray-500">{dateTime(o.created_at)}</td>
-                        <td className="px-5 py-3">{o.customer_email || "—"}</td>
-                        <td className="px-5 py-3 text-right font-semibold tabular-nums">{money(o.total)}</td>
-                        <td className="px-5 py-3">
-                          <Badge tone={ORDER_STATUS[o.status].tone}>{ORDER_STATUS[o.status].label}</Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        <div className="space-y-6">
+          <Card title="Мало на складе" bodyClassName="p-0" actions={<Link href="/admin/stock" className="text-sm text-[#012F91] hover:underline">Склад</Link>}>
+            {stockAlerts.length === 0 ? (
+              <EmptyState title="Остатков достаточно" />
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {stockAlerts.map((s) => (
+                  <li key={s.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                    <Link href={`/admin/products/${s.product}`} className="text-gray-800 hover:text-[#012F91] line-clamp-1">
+                      {s.product_name}
+                    </Link>
+                    <span className="flex items-center gap-2 shrink-0">
+                      <span className="tabular-nums text-gray-500">{num(s.quantity)} шт.</span>
+                      <Badge tone={STOCK_STATUS[s.status].tone}>{STOCK_STATUS[s.status].label}</Badge>
+                    </span>
+                  </li>
+                ))}
+              </ul>
             )}
           </Card>
-        </>
-      )}
+
+          <Card title="Ожидают оплаты" bodyClassName="p-0">
+            {awaitingPayment.length === 0 ? (
+              <EmptyState title="Неоплаченных заказов нет" />
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {awaitingPayment.map((o) => (
+                  <li key={o.id} className="flex items-center justify-between px-5 py-3 text-sm">
+                    <Link href={`/admin/orders/${o.id}`} className="text-[#012F91] hover:underline">
+                      №{o.number}
+                    </Link>
+                    <span className="tabular-nums font-medium">{money(o.total)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+      </div>
     </>
   );
 }

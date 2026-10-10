@@ -39,10 +39,10 @@ const Footer = () => {
           <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4">
             <div className="text-left sm:text-right">
               <a
-                href="tel:88004440065"
+                href="tel:500200684"
                 className="text-base sm:text-lg font-extrabold text-black block hover:text-[#005bff] leading-tight"
               >
-                8 800 444 00 65
+                500200684
               </a>
               <span className="text-[10px] sm:text-[11px] text-[#808080] block">
                 Ежедневно, с 8:00 до 18:00

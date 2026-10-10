@@ -1,10 +1,10 @@
 "use client";
 
 import ResourcePage from "@/components/admin/ResourcePage";
+import { dateTime, money, num } from "@/lib/admin/labels";
 import { Badge } from "@/components/admin/ui";
-import { dateOnly, money } from "@/lib/admin/format";
 
-type Row = {
+interface AdminPromoCode extends Record<string, unknown> {
   id: number;
   code: string;
   type: "percent" | "fixed";
@@ -13,61 +13,82 @@ type Row = {
   valid_to: string | null;
   usage_limit: number | null;
   used_count: number;
-} & Record<string, unknown>;
+}
 
-const typeOptions = [
+const TYPES = [
   { value: "percent", label: "Процент" },
   { value: "fixed", label: "Фиксированная сумма" },
 ];
 
 export default function PromoCodesPage() {
+  const now = new Date().toISOString();
   return (
-    <ResourcePage<Row>
-      resource="promo-codes"
+    <ResourcePage<AdminPromoCode>
       title="Промокоды"
-      subtitle="Скидочные коды для корзины"
-      createLabel="Создать промокод"
-      searchPlaceholder="Код…"
-      filters={[{ param: "type", label: "Тип", options: typeOptions }]}
+      description="Скидочные коды для корзины: размер, лимит и срок действия"
+      resource="promo-codes"
+      noun="промокод"
+      itemName={(p) => p.code}
+      searchPlaceholder="Код"
+      filters={[{ name: "type", label: "Любой тип", options: TYPES }]}
+      defaults={{ code: "", type: "percent", value: "", min_order: "0", valid_to: "", usage_limit: "" }}
       columns={[
-        { key: "code", label: "Код", sortable: true, render: (r) => <code className="rounded bg-gray-100 px-2 py-0.5 font-semibold text-gray-900">{r.code}</code> },
+        {
+          key: "code",
+          header: "Код",
+          sortKey: "code",
+          hideable: false,
+          render: (p) => <span className="font-mono font-semibold text-gray-900">{p.code}</span>,
+        },
         {
           key: "value",
-          label: "Скидка",
+          header: "Скидка",
           align: "right",
-          render: (r) => (r.type === "percent" ? `${Number(r.value)}%` : money(r.value)),
+          render: (p) => (p.type === "percent" ? `${Number(p.value)}%` : money(p.value)),
         },
-        { key: "min_order", label: "Мин. заказ", align: "right", render: (r) => money(r.min_order) },
         {
-          key: "used_count",
-          label: "Использовано",
+          key: "min",
+          header: "Мин. заказ",
           align: "right",
-          render: (r) => (
+          render: (p) => (Number(p.min_order) ? money(p.min_order) : "—"),
+        },
+        {
+          key: "usage",
+          header: "Использован",
+          align: "right",
+          render: (p) => (
             <span className="tabular-nums">
-              {r.used_count}
-              {r.usage_limit ? <span className="text-gray-400"> / {r.usage_limit}</span> : null}
+              {num(p.used_count)}
+              {p.usage_limit ? ` / ${num(p.usage_limit)}` : ""}
             </span>
           ),
         },
         {
-          key: "valid_to",
-          label: "Статус",
-          render: (r) => {
-            const expired = r.valid_to && new Date(r.valid_to) < new Date();
-            const exhausted = r.usage_limit !== null && r.used_count >= r.usage_limit;
-            if (expired) return <Badge>Истёк {dateOnly(r.valid_to)}</Badge>;
-            if (exhausted) return <Badge tone="red">Лимит исчерпан</Badge>;
-            return <Badge tone="green">{r.valid_to ? `До ${dateOnly(r.valid_to)}` : "Активен"}</Badge>;
-          },
+          key: "valid",
+          header: "Действует до",
+          sortKey: "valid_to",
+          render: (p) => (p.valid_to ? dateTime(p.valid_to) : "Бессрочно"),
+        },
+        {
+          key: "state",
+          header: "Статус",
+          render: (p) =>
+            p.valid_to && p.valid_to < now ? (
+              <Badge tone="grey">Истёк</Badge>
+            ) : p.usage_limit && p.used_count >= p.usage_limit ? (
+              <Badge tone="red">Лимит исчерпан</Badge>
+            ) : (
+              <Badge tone="green">Активен</Badge>
+            ),
         },
       ]}
       fields={[
-        { name: "code", label: "Код", type: "text", required: true, placeholder: "SALE10" },
-        { name: "type", label: "Тип скидки", type: "select", required: true, options: typeOptions },
-        { name: "value", label: "Размер скидки", type: "number", required: true, hint: "Процент или сумма — в зависимости от типа" },
-        { name: "min_order", label: "Минимальная сумма заказа", type: "number" },
-        { name: "usage_limit", label: "Лимит использований", type: "number", hint: "Пусто — без ограничений" },
-        { name: "valid_to", label: "Действует до", type: "datetime" },
+        { name: "code", label: "Код", type: "text", required: true, placeholder: "LAKOART20", hint: "Клиент вводит его в корзине" },
+        { name: "type", label: "Тип скидки", type: "select", required: true, options: TYPES, half: true },
+        { name: "value", label: "Размер скидки", type: "number", required: true, hint: "% или сумма", half: true },
+        { name: "min_order", label: "Минимальная сумма заказа", type: "number", half: true },
+        { name: "usage_limit", label: "Лимит использований", type: "number", hint: "Пусто — без лимита", half: true },
+        { name: "valid_to", label: "Действует до", type: "datetime", hint: "Пусто — бессрочно" },
       ]}
     />
   );

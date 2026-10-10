@@ -1,11 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import ResourcePage from "@/components/admin/ResourcePage";
+import { useAdminList } from "@/lib/admin/adminApi";
+import { dateOnly, mediaUrl } from "@/lib/admin/labels";
+import type { AdminCategory } from "@/lib/admin/types";
 import { Badge } from "@/components/admin/ui";
-import { dateOnly } from "@/lib/admin/format";
-import { useCategories } from "@/lib/admin/options";
 
-type Row = {
+interface AdminPromotion extends Record<string, unknown> {
   id: number;
   title: string;
   slug: string;
@@ -14,51 +16,73 @@ type Row = {
   discount_label: string;
   valid_until: string | null;
   category: number | null;
-} & Record<string, unknown>;
+}
 
 export default function PromotionsPage() {
-  const { byId, options } = useCategories();
+  const categories = useAdminList<AdminCategory>("categories", { page_size: 500, ordering: "name" });
+  const catName = new Map((categories.data?.results ?? []).map((c) => [c.id, c.name]));
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <ResourcePage<Row>
-      resource="promotions"
+    <ResourcePage<AdminPromotion>
       title="Акции"
-      subtitle="Страница «Все акции» и промо-блоки на главной"
-      createLabel="Создать акцию"
-      searchPlaceholder="Название акции…"
+      description="Акции на сайте (/aksiya): баннер, срок действия и категория"
+      resource="promotions"
+      noun="акцию"
+      itemName={(p) => p.title}
+      searchPlaceholder="Название акции"
+      defaults={{ title: "", slug: "", discount_label: "", valid_until: "", category: "", body: "" }}
       columns={[
         {
           key: "image",
-          label: "Баннер",
-          render: (r) =>
-            r.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={r.image} alt={r.title} className="h-10 w-20 rounded-md object-cover ring-1 ring-gray-200" />
-            ) : (
-              "—"
-            ),
+          header: "Баннер",
+          render: (p) => (
+            <span className="relative block w-24 h-12 rounded bg-gray-50 overflow-hidden">
+              {p.image && <Image src={mediaUrl(p.image)} alt="" fill sizes="96px" className="object-cover" />}
+            </span>
+          ),
         },
-        { key: "title", label: "Название", render: (r) => <span className="font-medium text-gray-900">{r.title}</span> },
-        { key: "discount_label", label: "Скидка", render: (r) => <Badge tone="red">{r.discount_label || "—"}</Badge> },
-        { key: "category", label: "Категория", render: (r) => (r.category ? byId.get(r.category)?.name ?? `#${r.category}` : "Все товары") },
         {
-          key: "valid_until",
-          label: "Действует до",
-          render: (r) => {
-            if (!r.valid_until) return <Badge tone="green">Бессрочно</Badge>;
-            const expired = new Date(r.valid_until) < new Date();
-            return expired ? <Badge>Завершена {dateOnly(r.valid_until)}</Badge> : dateOnly(r.valid_until);
-          },
+          key: "title",
+          header: "Название",
+          sortKey: "title",
+          hideable: false,
+          render: (p) => <span className="font-medium text-gray-900">{p.title}</span>,
+        },
+        { key: "discount", header: "Скидка", render: (p) => p.discount_label || "—" },
+        {
+          key: "category",
+          header: "Категория",
+          render: (p) => (p.category ? catName.get(p.category) ?? "—" : "Все товары"),
+        },
+        {
+          key: "valid",
+          header: "Действует до",
+          sortKey: "valid_until",
+          render: (p) =>
+            !p.valid_until ? (
+              <Badge tone="green">Бессрочно</Badge>
+            ) : p.valid_until < today ? (
+              <Badge tone="grey">Завершена {dateOnly(p.valid_until)}</Badge>
+            ) : (
+              <Badge tone="blue">до {dateOnly(p.valid_until)}</Badge>
+            ),
         },
       ]}
       fields={[
-        { name: "title", label: "Название", type: "text", required: true },
-        { name: "slug", label: "Slug", type: "text", required: true },
-        { name: "discount_label", label: "Метка скидки", type: "text", placeholder: "до -30%" },
-        { name: "valid_until", label: "Действует до", type: "date" },
-        { name: "category", label: "Категория товаров", type: "select", options, wide: true },
-        { name: "body", label: "Описание", type: "textarea" },
+        { name: "title", label: "Название", type: "text", required: true, placeholder: "Скидки на лакокрасочные материалы" },
+        { name: "slug", label: "Slug", type: "slug", from: "title", required: true },
+        { name: "discount_label", label: "Подпись скидки", type: "text", placeholder: "до -30%", half: true },
+        { name: "valid_until", label: "Действует до", type: "date", hint: "Пусто — бессрочно", half: true },
+        {
+          name: "category",
+          label: "Категория",
+          type: "select",
+          hint: "Пусто — акция на все товары",
+          options: (categories.data?.results ?? []).map((c) => ({ value: String(c.id), label: c.name })),
+        },
         { name: "image", label: "Баннер", type: "image" },
+        { name: "body", label: "Описание акции", type: "textarea" },
       ]}
     />
   );

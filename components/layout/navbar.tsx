@@ -114,10 +114,10 @@ const Header = () => {
               Ежедневно, с 8:00 до 18:00
             </span>
             <a
-              href="tel:88004440065"
+              href="tel:500200684"
               className="text-xs sm:text-sm lg:text-base font-extrabold text-black hover:text-[#005bff] whitespace-nowrap"
             >
-              8 800 444 00 65
+              500200684
             </a>
             <button
               type="button"

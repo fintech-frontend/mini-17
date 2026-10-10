@@ -1,87 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
-import { AlertTriangle, Inbox, Loader2, X } from "lucide-react";
-import type { Tone } from "@/lib/admin/format";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { AlertTriangle, Inbox, Loader2, RefreshCw, X } from "lucide-react";
+import type { Tone } from "@/lib/admin/labels";
 
-// Brief ranglari
-export const C = {
-  primary: "#012F91",
-  dark: "#003B73",
-  red: "#EE0906",
-  bg: "#F5F7FA",
-};
+/* Ranglar (topshiriq bo'yicha):
+   primary #012F91, sidebar #003B73, accent #EE0906, fon #F5F7FA, kartochka #FFFFFF */
 
-const TONES: Record<Tone, string> = {
-  green: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  yellow: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  blue: "bg-blue-50 text-blue-700 ring-blue-600/20",
-  red: "bg-red-50 text-red-700 ring-red-600/20",
-  grey: "bg-gray-100 text-gray-600 ring-gray-500/20",
-};
+// ---------- Tugmalar ----------
+type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
 
-export function Badge({ tone = "grey", children }: { tone?: Tone; children: React.ReactNode }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${TONES[tone]}`}
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      {children}
-    </span>
-  );
-}
-
-export function Card({
-  title,
-  action,
-  children,
-  className = "",
-  padded = true,
-}: {
-  title?: React.ReactNode;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
-  padded?: boolean;
-}) {
-  return (
-    <section className={`rounded-xl bg-white shadow-[0_1px_3px_rgba(16,24,40,0.06),0_1px_2px_rgba(16,24,40,0.04)] ring-1 ring-gray-200/70 ${className}`}>
-      {(title || action) && (
-        <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3.5">
-          <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-          {action}
-        </header>
-      )}
-      <div className={padded ? "p-5" : ""}>{children}</div>
-    </section>
-  );
-}
-
-export function PageHeader({
-  title,
-  subtitle,
-  actions,
-}: {
-  title: string;
-  subtitle?: React.ReactNode;
-  actions?: React.ReactNode;
-}) {
-  return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
-      </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
-    </div>
-  );
-}
-
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "danger" | "ghost";
-  size?: "sm" | "md";
-  loading?: boolean;
-  icon?: React.ReactNode;
+const BUTTON: Record<ButtonVariant, string> = {
+  primary: "bg-[#012F91] hover:bg-[#00256f] text-white",
+  secondary: "bg-white border border-gray-200 hover:bg-gray-50 text-gray-800",
+  danger: "bg-[#EE0906] hover:bg-[#c90704] text-white",
+  ghost: "text-gray-600 hover:bg-gray-100",
 };
 
 export function Button({
@@ -89,250 +22,134 @@ export function Button({
   size = "md",
   loading,
   icon,
-  children,
   className = "",
-  disabled,
-  ...rest
-}: ButtonProps) {
-  const variants = {
-    primary: "bg-[#012F91] text-white hover:bg-[#00257a] focus-visible:outline-[#012F91]",
-    secondary: "bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50",
-    danger: "bg-[#EE0906] text-white hover:bg-[#c90805] focus-visible:outline-[#EE0906]",
-    ghost: "text-gray-600 hover:bg-gray-100",
-  };
-  const sizes = { sm: "h-8 px-3 text-xs", md: "h-9 px-4 text-sm" };
+  children,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: ButtonVariant;
+  size?: "sm" | "md";
+  loading?: boolean;
+  icon?: React.ReactNode;
+}) {
   return (
     <button
-      {...rest}
-      disabled={disabled || loading}
-      className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}
+      type="button"
+      {...props}
+      disabled={props.disabled || loading}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${
+        size === "sm" ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm"
+      } ${BUTTON[variant]} ${className}`}
     >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
+      {loading ? <Loader2 size={16} className="animate-spin" /> : icon}
       {children}
     </button>
   );
 }
 
-export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-md bg-gray-200/70 ${className}`} />;
-}
+// ---------- Badge (status) ----------
+const TONE: Record<Tone, string> = {
+  green: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  yellow: "bg-amber-50 text-amber-800 ring-amber-600/25",
+  blue: "bg-blue-50 text-blue-700 ring-blue-600/20",
+  red: "bg-red-50 text-red-700 ring-red-600/20",
+  grey: "bg-gray-100 text-gray-600 ring-gray-500/20",
+};
+const DOT: Record<Tone, string> = {
+  green: "bg-emerald-500",
+  yellow: "bg-amber-500",
+  blue: "bg-blue-500",
+  red: "bg-red-500",
+  grey: "bg-gray-400",
+};
 
-export function EmptyState({
-  title = "Пока пусто",
-  text,
-  action,
-}: {
-  title?: string;
-  text?: string;
-  action?: React.ReactNode;
-}) {
+export function Badge({ tone, children }: { tone: Tone; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400">
-        <Inbox className="h-6 w-6" />
-      </div>
-      <p className="text-sm font-semibold text-gray-900">{title}</p>
-      {text && <p className="mt-1 max-w-sm text-sm text-gray-500">{text}</p>}
-      {action && <div className="mt-4">{action}</div>}
-    </div>
-  );
-}
-
-export function ErrorState({ text, onRetry }: { text: string; onRetry?: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-[#EE0906]">
-        <AlertTriangle className="h-6 w-6" />
-      </div>
-      <p className="text-sm font-semibold text-gray-900">Не удалось загрузить данные</p>
-      <p className="mt-1 max-w-md text-sm text-gray-500">{text}</p>
-      {onRetry && (
-        <Button variant="secondary" size="sm" className="mt-4" onClick={onRetry}>
-          Повторить
-        </Button>
-      )}
-    </div>
-  );
-}
-
-export function Modal({
-  open,
-  title,
-  onClose,
-  children,
-  footer,
-  width = "max-w-lg",
-}: {
-  open: boolean;
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-  footer?: React.ReactNode;
-  width?: string;
-}) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onClick={(e) => e.stopPropagation()}
-        className={`flex max-h-[90vh] w-full ${width} flex-col rounded-xl bg-white shadow-2xl`}
-      >
-        <header className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Закрыть"
-            className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </header>
-        <div className="overflow-y-auto px-5 py-4">{children}</div>
-        {footer && (
-          <footer className="flex justify-end gap-2 border-t border-gray-100 px-5 py-3">{footer}</footer>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export function ConfirmDialog({
-  open,
-  title,
-  text,
-  confirmLabel = "Удалить",
-  loading,
-  onConfirm,
-  onClose,
-}: {
-  open: boolean;
-  title: string;
-  text: string;
-  confirmLabel?: string;
-  loading?: boolean;
-  onConfirm: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <Modal
-      open={open}
-      title={title}
-      onClose={onClose}
-      width="max-w-md"
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Отмена
-          </Button>
-          <Button variant="danger" loading={loading} onClick={onConfirm}>
-            {confirmLabel}
-          </Button>
-        </>
-      }
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset whitespace-nowrap ${TONE[tone]}`}
     >
-      <p className="text-sm text-gray-600">{text}</p>
-    </Modal>
+      <span className={`w-1.5 h-1.5 rounded-full ${DOT[tone]}`} aria-hidden />
+      {children}
+    </span>
   );
 }
 
-export function Pagination({
-  page,
-  pages,
-  count,
-  onChange,
+// ---------- Kartochka va sahifa sarlavhasi ----------
+export function Card({
+  title,
+  actions,
+  className = "",
+  bodyClassName = "p-5",
+  children,
 }: {
-  page: number;
-  pages: number;
-  count: number;
-  onChange: (page: number) => void;
+  title?: React.ReactNode;
+  actions?: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+  children: React.ReactNode;
 }) {
-  if (pages <= 1) {
-    return <p className="px-5 py-3 text-xs text-gray-500">Всего: {count}</p>;
-  }
-  // Joriy sahifa atrofidagi raqamlar
-  const nums = Array.from({ length: pages }, (_, i) => i + 1).filter(
-    (n) => n === 1 || n === pages || Math.abs(n - page) <= 1,
-  );
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-5 py-3">
-      <p className="text-xs text-gray-500">Всего: {count}</p>
-      <div className="flex items-center gap-1">
-        <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>
-          Назад
-        </Button>
-        {nums.map((n, i) => (
-          <span key={n} className="flex items-center">
-            {i > 0 && nums[i - 1] !== n - 1 && <span className="px-1 text-xs text-gray-400">…</span>}
-            <button
-              type="button"
-              onClick={() => onChange(n)}
-              aria-current={n === page ? "page" : undefined}
-              className={`h-8 min-w-8 rounded-lg px-2 text-xs font-medium tabular-nums ${
-                n === page ? "bg-[#012F91] text-white" : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              {n}
-            </button>
-          </span>
-        ))}
-        <Button variant="secondary" size="sm" disabled={page >= pages} onClick={() => onChange(page + 1)}>
-          Далее
-        </Button>
+    <section className={`bg-white rounded-xl shadow-[0_1px_3px_rgba(16,24,40,0.06),0_1px_2px_rgba(16,24,40,0.04)] ${className}`}>
+      {(title || actions) && (
+        <header className="flex items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-gray-100">
+          <h2 className="text-[15px] font-semibold text-gray-900">{title}</h2>
+          {actions}
+        </header>
+      )}
+      <div className={bodyClassName}>{children}</div>
+    </section>
+  );
+}
+
+export function PageHeader({
+  title,
+  description,
+  actions,
+}: {
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+        {description && <p className="text-sm text-gray-500 mt-1">{description}</p>}
       </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }
 
-// ---------- Forma elementlari ----------
-const fieldBase =
-  "block w-full rounded-lg border-0 bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-[#012F91] disabled:bg-gray-50 disabled:text-gray-500";
+// ---------- Forma maydonlari ----------
+export const inputCls =
+  "w-full h-10 px-3 text-sm bg-white border border-gray-200 rounded-lg outline-none focus:border-[#012F91] focus:ring-2 focus:ring-[#012F91]/10 placeholder:text-gray-400 disabled:bg-gray-50";
 
 export function Field({
   label,
   hint,
+  error,
   required,
   children,
   className = "",
 }: {
   label: string;
   hint?: string;
+  error?: string;
   required?: boolean;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
     <label className={`block ${className}`}>
-      <span className="mb-1.5 block text-xs font-medium text-gray-700">
+      <span className="block text-[13px] font-medium text-gray-700 mb-1.5">
         {label}
         {required && <span className="text-[#EE0906]"> *</span>}
       </span>
       {children}
-      {hint && <span className="mt-1 block text-[11px] text-gray-500">{hint}</span>}
+      {hint && !error && <span className="block text-xs text-gray-400 mt-1">{hint}</span>}
+      {error && <span className="block text-xs text-[#EE0906] mt-1">{error}</span>}
     </label>
   );
-}
-
-export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={`${fieldBase} ${props.className ?? ""}`} />;
-}
-
-export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={`${fieldBase} ${props.className ?? ""}`} />;
-}
-
-export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={`${fieldBase} pr-8 ${props.className ?? ""}`} />;
 }
 
 export function Toggle({
@@ -342,22 +159,212 @@ export function Toggle({
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
-  label?: string;
+  label: string;
 }) {
   return (
-    <label className="inline-flex cursor-pointer items-center gap-2.5 select-none">
+    <label className="flex w-fit items-center gap-2.5 cursor-pointer select-none text-sm text-gray-700">
       <button
         type="button"
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative h-5 w-9 rounded-full transition-colors ${checked ? "bg-[#012F91]" : "bg-gray-300"}`}
+        className={`relative w-9 h-5 rounded-full transition-colors ${checked ? "bg-[#012F91]" : "bg-gray-300"}`}
       >
         <span
-          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-4" : "translate-x-0.5"}`}
+          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+            checked ? "translate-x-4" : ""
+          }`}
         />
       </button>
-      {label && <span className="text-sm text-gray-700">{label}</span>}
+      {label}
     </label>
   );
+}
+
+// ---------- Modal va drawer ----------
+function useEscape(open: boolean, onClose: () => void) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+}
+
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  width = "max-w-md",
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  width?: string;
+}) {
+  useEscape(open, onClose);
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/40" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full ${width} bg-white rounded-xl shadow-2xl`}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+          <button type="button" onClick={onClose} aria-label="Закрыть" className="text-gray-400 hover:text-gray-700">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="px-5 py-4">{children}</div>
+        {footer && <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-100">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+export function Drawer({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  width = "max-w-xl",
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  width?: string;
+}) {
+  useEscape(open, onClose);
+  return (
+    <>
+      <div
+        onClick={onClose}
+        aria-hidden
+        className={`fixed inset-0 z-[150] bg-gray-900/30 transition-opacity ${open ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+      />
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        inert={!open}
+        className={`fixed inset-y-0 right-0 z-[160] w-full ${width} bg-white shadow-2xl flex flex-col transition-transform duration-300 ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+          <button type="button" onClick={onClose} aria-label="Закрыть" className="text-gray-400 hover:text-gray-700">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-5">{open && children}</div>
+        {footer && <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">{footer}</div>}
+      </aside>
+    </>
+  );
+}
+
+// ---------- Tasdiqlash oynasi: const confirm = useConfirm(); if (await confirm({...})) ----------
+type ConfirmOptions = { title: string; message: string; confirmText?: string; danger?: boolean };
+const ConfirmContext = createContext<(o: ConfirmOptions) => Promise<boolean>>(async () => false);
+
+export function ConfirmProvider({ children }: { children: React.ReactNode }) {
+  const [options, setOptions] = useState<ConfirmOptions | null>(null);
+  const resolver = useRef<(v: boolean) => void>(() => {});
+
+  const confirm = useCallback(
+    (o: ConfirmOptions) =>
+      new Promise<boolean>((resolve) => {
+        resolver.current = resolve;
+        setOptions(o);
+      }),
+    []
+  );
+
+  const close = (value: boolean) => {
+    resolver.current(value);
+    setOptions(null);
+  };
+
+  return (
+    <ConfirmContext.Provider value={confirm}>
+      {children}
+      <Modal
+        open={!!options}
+        onClose={() => close(false)}
+        title={options?.title ?? ""}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => close(false)}>
+              Отмена
+            </Button>
+            <Button variant={options?.danger ? "danger" : "primary"} onClick={() => close(true)}>
+              {options?.confirmText ?? "Подтвердить"}
+            </Button>
+          </>
+        }
+      >
+        <div className="flex gap-3">
+          {options?.danger && <AlertTriangle size={20} className="shrink-0 text-[#EE0906] mt-0.5" />}
+          <p className="text-sm text-gray-600 leading-relaxed">{options?.message}</p>
+        </div>
+      </Modal>
+    </ConfirmContext.Provider>
+  );
+}
+
+export const useConfirm = () => useContext(ConfirmContext);
+
+// ---------- Holatlar ----------
+export function EmptyState({
+  title = "Пока ничего нет",
+  text,
+  action,
+}: {
+  title?: string;
+  text?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center text-center py-14 px-4">
+      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 mb-3">
+        <Inbox size={22} />
+      </div>
+      <p className="text-sm font-semibold text-gray-900">{title}</p>
+      {text && <p className="text-sm text-gray-500 mt-1 max-w-sm">{text}</p>}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
+
+export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div className="flex flex-col items-center text-center py-14 px-4">
+      <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-[#EE0906] mb-3">
+        <AlertTriangle size={22} />
+      </div>
+      <p className="text-sm font-semibold text-gray-900">Не удалось загрузить данные</p>
+      <p className="text-sm text-gray-500 mt-1 max-w-sm">{message}</p>
+      {onRetry && (
+        <Button variant="secondary" size="sm" className="mt-4" icon={<RefreshCw size={14} />} onClick={onRetry}>
+          Повторить
+        </Button>
+      )}
+    </div>
+  );
+}
+
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-gray-100 ${className}`} />;
 }

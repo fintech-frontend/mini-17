@@ -83,8 +83,8 @@ export default function ProductTabs({ product }: ProductTabsProps) {
             )}
             <p>
               Оформить заказ довольно просто — положите товар в корзину или позвоните по телефону{' '}
-              <a href="tel:88004440065" className="text-blue-600 font-medium hover:underline">
-                8 800 444 00 65
+              <a href="tel:500200684" className="text-blue-600 font-medium hover:underline">
+                500200684
               </a>{' '}
               и наши консультанты Вам помогут!
             </p>
