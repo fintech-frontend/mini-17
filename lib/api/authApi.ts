@@ -24,7 +24,7 @@ export const authApi = baseApi.injectEndpoints({
         tokenStorage.set(data.tokens, arg.remember ?? true);
         return data;
       },
-      invalidatesTags: ["Profile", "Orders", "Cart"],
+      invalidatesTags: ["Profile", "Orders", "Cart", "Admin"],
     }),
     // Ro'yxatdan o'tish: akkaunt yaratiladi va emailga 6 xonali kod yuboriladi
     register: build.mutation<RegisterResponse, RegisterRequest>({

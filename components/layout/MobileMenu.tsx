@@ -119,10 +119,10 @@ export default function MobileMenu() {
         <div className="px-5 pb-6 pt-4 space-y-3">
           <p className="text-center text-xs text-gray-500">Ежедневно, с 8:00 до 18:00</p>
           <a
-            href="tel:88004440065"
+            href="tel:500200684"
             className="block w-full text-center py-3.5 rounded-full border-2 border-gray-200 text-[#005bff] font-bold text-base hover:border-[#005bff] transition-colors"
           >
-            8 800 444 00 65
+            500200684
           </a>
           <button
             type="button"

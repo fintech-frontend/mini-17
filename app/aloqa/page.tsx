@@ -34,7 +34,7 @@ const REGIONS = [
   "Самара",
 ];
 
-const REGION_PHONE = "+7 (800) 444-00-65";
+const REGION_PHONE = "500200684";
 const EMAIL = "info@stroyoptorg.ru";
 
 // Telefon raqamini +7 (___) ___-__-__ formatida yozish
